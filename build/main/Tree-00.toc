@@ -1,7 +1,0 @@
-('./src/img',
- 'src/img',
- ['*.git', '*.gitignore', '*.gitattributes', '*.log', '__pycache__'],
- 'DATA',
- [('src/img\\black_icon.png', './src/img\\black_icon.png', 'DATA'),
-  ('src/img\\green_dot.png', './src/img\\green_dot.png', 'DATA'),
-  ('src/img\\red_dot.png', './src/img\\red_dot.png', 'DATA')])
