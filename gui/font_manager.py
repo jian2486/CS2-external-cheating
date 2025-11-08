@@ -1,0 +1,30 @@
+# 字体管理模块 - 统一管理系统中所有UI组件的字体大小
+# 通过修改此文件中的字体大小值，可以统一调整整个应用程序的字体大小
+
+# 标题字体大小
+TITLE_FONT_SIZE = 40
+SUBTITLE_FONT_SIZE = 20
+
+# 大类标题字体大小
+SECTION_TITLE_FONT_SIZE = 20
+SECTION_SUBTITLE_FONT_SIZE = 20
+
+# 设置项字体大小
+SETTING_LABEL_FONT_SIZE = 18
+SETTING_DESCRIPTION_FONT_SIZE = 18
+
+# 输入控件字体大小
+INPUT_FONT_SIZE = 14
+INPUT_BOLD_FONT_SIZE = 18
+
+# 下拉菜单字体大小
+DROPDOWN_FONT_SIZE = 14
+DROPDOWN_MENU_FONT_SIZE = 18
+
+# 特殊组件字体大小
+SLIDER_VALUE_FONT_SIZE = 19
+
+# 字体名称
+MAIN_FONT = "Chivo"
+SECONDARY_FONT = "Chivo-Regular"
+THIRDLY_FONT = "Chivo-Bold"

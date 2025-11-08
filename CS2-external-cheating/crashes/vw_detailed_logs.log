@@ -1,0 +1,17 @@
+[2025-11-09 05:16:12.412 INFO    ] {classes.logger:logger:setup_logging:98} [PID:30684 TID:16040] 日志系统初始化成功
+[2025-11-09 05:16:12.412 INFO    ] {classes.logger:main:main:87} [PID:30684 TID:16040] 正在启动应用程序...
+[2025-11-09 05:16:12.417 INFO    ] {classes.logger:utility:fetch_offsets:101} [PID:30684 TID:16040] 已加载偏移量
+[2025-11-09 05:16:12.418 INFO    ] {classes.logger:config_manager:load_config:121} [PID:30684 TID:16040] 已加载配置
+[2025-11-09 05:16:12.426 DEBUG   ] {classes.logger:aimbot:update_config:73} [PID:30684 TID:16040] 自动瞄准配置已更新
+[2025-11-09 05:16:12.434 INFO    ] {classes.logger:main_window:initialize_features:158} [PID:30684 TID:16040] 所有功能初始化成功
+[2025-11-09 05:16:12.435 INFO    ] {classes.logger:display_affinity_manager:start_affinity_thread:207} [PID:30684 TID:16040] 已启动反截屏管理线程
+[2025-11-09 05:16:12.607 DEBUG   ] {PIL.PngImagePlugin:PngImagePlugin:call:201} [PID:30684 TID:16040] STREAM b'IHDR' 16 13
+[2025-11-09 05:16:12.607 DEBUG   ] {PIL.PngImagePlugin:PngImagePlugin:call:201} [PID:30684 TID:16040] STREAM b'IDAT' 41 138
+[2025-11-09 05:16:14.916 INFO    ] {classes.logger:main_window:init_config_watcher:1261} [PID:30684 TID:16040] 配置文件监视器已成功启动
+[2025-11-09 05:16:15.025 DEBUG   ] {classes.logger:main:main:95} [PID:30684 TID:16040] 主窗口创建成功
+[2025-11-09 05:16:17.979 DEBUG   ] {classes.logger:main_window:stop_client:713} [PID:30684 TID:16040] 没有正在运行的功能需要停止
+[2025-11-09 05:16:18.451 INFO    ] {classes.logger:display_affinity_manager:stop_affinity_thread:214} [PID:30684 TID:16040] 已停止反截屏管理线程
+[2025-11-09 05:16:18.452 INFO    ] {classes.logger:main_window:cleanup:1299} [PID:30684 TID:16040] 所有热键已移除
+[2025-11-09 05:16:18.651 DEBUG   ] {classes.logger:main:main:97} [PID:30684 TID:16040] 应用程序正常完成
+[2025-11-09 05:16:18.651 DEBUG   ] {classes.logger:main:main:112} [PID:30684 TID:16040] 正在清理窗口资源...
+[2025-11-09 05:16:18.651 DEBUG   ] {classes.logger:main:main:117} [PID:30684 TID:16040] 应用程序正在关闭
