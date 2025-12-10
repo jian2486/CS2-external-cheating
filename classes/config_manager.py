@@ -24,12 +24,14 @@ class ConfigManager:
             "OverlayVulkan": False,
             "Bunnyhop": False,
             "Noflash": False,
+            "Glow": False,
             "RenderMode": "默认(pyMeow)"  # 添加渲染模式选项
         },
         "Trigger": {
             "TriggerKey": "x",
             "ToggleMode": False,
             "AttackOnTeammates": False,
+            "MemoryShoot": False,  # 添加内存射击模式选项
             "active_weapon_type": "Rifles",
             "WeaponSettings": {
                 "Pistols": {"ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02},
@@ -62,7 +64,6 @@ class ConfigManager:
             "snaplines_color_hex": "#FFFFFF",
             "box_line_thickness": 1.0,
             "box_color_hex": "#FFA500",
-            "box_fill_alpha": 0.0,
             "text_color_hex": "#FFFFFF",
             "draw_health_numbers": True,
             "use_transliteration": False,

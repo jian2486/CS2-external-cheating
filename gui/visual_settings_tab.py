@@ -81,7 +81,7 @@ def create_glow_section(main_window, parent):
 
     # 发光配置的设置列表
     settings_list = [
-        ("启用发光效果", "checkbox", "enable_glow", "切换发光效果可见性"),
+        ("敌人发光", "checkbox", "enable_glow", "切换敌人发光效果可见性"),
         ("不对尸体发光", "checkbox", "glow_exclude_dead", "切换是否对尸体应用发光效果"),
         ("队友发光", "checkbox", "glow_teammates", "切换是否对队友应用发光效果"),
         ("发光粗细", "slider", "glow_thickness", "调整发光效果粗细 (0.5-5.0)"),

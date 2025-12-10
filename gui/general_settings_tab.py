@@ -85,7 +85,8 @@ def create_features_section(main_window, parent):
         ("自瞄", "Aimbot", "按下按键时自动瞄准最近的敌人头部"),
         ("ESP 叠加层", "Overlay", "显示玩家信息、方框和其他视觉辅助"),
         ("连跳", "Bunnyhop", "自动跳跃以保持动量和速度"),
-        ("无闪光", "Noflash", "减少或消除屏幕上的闪光弹效果")
+        ("无闪光", "Noflash", "减少或消除屏幕上的闪光弹效果"),
+        ("发光模块", "Glow", "启用或禁用发光效果")
     ]
 
     # 创建每个功能切换项
@@ -178,36 +179,65 @@ def toggle_feature(main_window, feature_key, state):
     main_window.config["General"][feature_key] = state
     main_window.save_settings()
 
-    # 静默处理 Overlay 功能的启用/禁用
+    # 直接控制功能的启动和停止，而不仅仅是保存配置
     if feature_key == "Overlay":
         if state:
-            # 启用时不需要特别处理，会在下次启动时生效
-            pass
+            # 如果功能正在运行则停止它
+            if hasattr(main_window, 'overlay') and getattr(main_window.overlay, 'is_running', False):
+                main_window._stop_feature("Overlay", main_window.overlay)
+            # 启动功能
+            main_window._start_feature("Overlay", main_window.overlay, main_window.config)
         else:
-            # 禁用时停止客户端
-            main_window.stop_client()
-            # 更新客户端状态显示
-            main_window.update_client_status("已停止", "#ef4444")
-    # 处理Bunnyhop功能的启用/禁用
+            # 停止功能
+            main_window._stop_feature("Overlay", main_window.overlay)
     elif feature_key == "Bunnyhop":
         if state:
-            # 启用时不需要特别处理，会在下次启动时生效
-            pass
+            # 如果功能正在运行则停止它
+            if hasattr(main_window, 'bunnyhop') and getattr(main_window.bunnyhop, 'is_running', False):
+                main_window._stop_feature("Bunnyhop", main_window.bunnyhop)
+            # 启动功能
+            main_window._start_feature("Bunnyhop", main_window.bunnyhop, main_window.config)
         else:
-            # 禁用时停止客户端
-            main_window.stop_client()
-            # 更新客户端状态显示
-            main_window.update_client_status("已停止", "#ef4444")
-    # 处理TriggerBot功能的启用/禁用
+            # 停止功能
+            main_window._stop_feature("Bunnyhop", main_window.bunnyhop)
     elif feature_key == "Trigger":
         if state:
-            # 启用时不需要特别处理，会在下次启动时生效
-            pass
+            # 如果功能正在运行则停止它
+            if hasattr(main_window, 'triggerbot') and getattr(main_window.triggerbot, 'is_running', False):
+                main_window._stop_feature("TriggerBot", main_window.triggerbot)
+            # 启动功能
+            main_window._start_feature("TriggerBot", main_window.triggerbot, main_window.config)
         else:
-            # 禁用时停止客户端
-            main_window.stop_client()
-            # 更新客户端状态显示
-            main_window.update_client_status("已停止", "#ef4444")
+            # 停止功能
+            main_window._stop_feature("TriggerBot", main_window.triggerbot)
+    elif feature_key == "Aimbot":
+        if state:
+            # 如果功能正在运行则停止它
+            if hasattr(main_window, 'aimbot') and getattr(main_window.aimbot, 'is_running', False):
+                main_window._stop_feature("Aimbot", main_window.aimbot)
+            # 启动功能
+            main_window._start_feature("Aimbot", main_window.aimbot, main_window.config)
+        else:
+            # 停止功能
+            main_window._stop_feature("Aimbot", main_window.aimbot)
+    elif feature_key == "Noflash":
+        if state:
+            # 如果功能正在运行则停止它
+            if hasattr(main_window, 'noflash') and getattr(main_window.noflash, 'is_running', False):
+                main_window._stop_feature("NoFlash", main_window.noflash)
+            # 启动功能
+            main_window._start_feature("NoFlash", main_window.noflash, main_window.config)
+        else:
+            # 停止功能
+            main_window._stop_feature("NoFlash", main_window.noflash)
+    elif feature_key == "Glow":
+        # 更新Overlay配置中的enable_glow设置
+        main_window.config["Overlay"]["enable_glow"] = state
+        if hasattr(main_window, 'overlay_settings_frame'):
+            # 更新视觉设置标签页中的UI控件
+            if hasattr(main_window, 'enable_glow_var'):
+                main_window.enable_glow_var.set(state)
+        main_window.save_settings()
 
 
 def create_setting_item(parent, label_text, description, widget_type, key, main_window, is_last=False):

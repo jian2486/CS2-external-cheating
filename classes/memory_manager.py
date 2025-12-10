@@ -401,6 +401,25 @@ class MemoryManager:
             logger.error(f"在地址 {hex(address)} 写入布尔值失败: {e}")
             raise
 
+    def force_attack(self, state: bool) -> None:
+        """通过修改内存触发攻击按钮状态。"""
+        try:
+            # 获取按钮偏移量
+            if hasattr(self, 'buttons_data') and self.buttons_data:
+                # 查找"attack"按钮的偏移量
+                client_buttons = self.buttons_data.get("client.dll", {})
+                attack_offset = client_buttons.get("attack")
+                
+                if attack_offset is not None:
+                    # 计算实际地址
+                    attack_address = self.client_base + attack_offset
+                    # 写入状态
+                    self.write_int(attack_address, 1 if state else 0)
+                else:
+                    logger.warning("未找到攻击按钮偏移量")
+        except Exception as e:
+            logger.error(f"设置攻击状态失败: {e}")
+
     def read_vec3(self, address: int) -> dict | None:
         """
         从指定地址的内存中读取一个3D向量（三个浮点数）。

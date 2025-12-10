@@ -94,7 +94,6 @@ def create_bounding_box_section(main_window, parent):
         ("启用骨骼ESP", "checkbox", "enable_skeleton", "切换玩家骨骼可见性"),
         ("线条粗细", "slider", "box_line_thickness", "调整边框线条粗细 (0.5-5.0)"),
         ("边框颜色", "combo", "box_color_hex", "选择边框颜色"),
-        ("边框填充透明度", "slider", "box_fill_alpha", "调整边框填充透明度 (0.0-1.0)"),
         ("目标FPS", "slider", "target_fps", "调整叠加层渲染目标FPS (60-420)")
     ]
 
@@ -445,8 +444,6 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             value_text = f"{initial_value:.0f}"
         elif key == "minimap_size":
             value_text = f"{initial_value:.0f}"
-        elif key == "box_fill_alpha":
-            value_text = f"{initial_value:.2f}"
         else:
             value_text = f"{initial_value:.1f}"
             
@@ -465,8 +462,6 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             from_val, to_val, steps = 60, 420, 3
         elif key == "minimap_size":
             from_val, to_val, steps = 100, 500, 40
-        elif key == "box_fill_alpha":
-            from_val, to_val, steps = 0.0, 1.0, 100
         elif key == "glow_thickness":
             from_val, to_val, steps = 0.5, 5.0, 9
         else:
@@ -552,8 +547,6 @@ def update_slider_value(event, key, main_window):
             formatted_value = f"{value:.0f}"
         elif key == "minimap_size":
             formatted_value = f"{value:.0f}"
-        elif key == "box_fill_alpha":
-            formatted_value = f"{value:.2f}"
         else:
             formatted_value = f"{value:.1f}"
             

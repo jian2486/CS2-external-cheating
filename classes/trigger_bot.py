@@ -43,6 +43,8 @@ class CS2TriggerBot:
         self.trigger_key = settings['TriggerKey']
         self.toggle_mode = settings['ToggleMode']
         self.attack_on_teammates = settings['AttackOnTeammates']
+        # 添加内存射击模式配置
+        self.memory_shoot = settings.get('MemoryShoot', False)
         
         active_weapon = settings.get("active_weapon_type", "Rifles")
         weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"]["Rifles"])
@@ -194,7 +196,16 @@ class CS2TriggerBot:
                         delay = random.uniform(shot_delay_min, shot_delay_max)
                         # Removed debug log
                         sleep(delay)
-                        mouse.click(Button.left)
+                        
+                        # 根据配置决定使用内存射击还是鼠标点击
+                        if self.memory_shoot:
+                            # 使用内存射击
+                            self.memory_manager.force_attack(True)
+                            sleep(0.01)  # 短暂延迟
+                            self.memory_manager.force_attack(False)
+                        else:
+                            # 使用鼠标点击
+                            mouse.click(Button.left)
                         sleep(post_shot_delay)
                 else:
                     sleep(MAIN_LOOP_SLEEP)

@@ -124,7 +124,7 @@ class MainWindow:
             logger.error(f"注册热键失败: {e}")
 
     def toggle_window_visibility(self):
-        """切换主窗口的可见性"""
+        """切换主窗口的可见性，并在显示时短暂置顶"""
         try:
             if self.root.winfo_viewable():
                 # 如果窗口可见，则隐藏它
@@ -135,7 +135,11 @@ class MainWindow:
                 self.root.deiconify()
                 self.root.lift()
                 self.root.focus_force()
-                logger.debug("主窗口已显示")
+                # 设置窗口短暂置顶
+                self.root.wm_attributes('-topmost', True)
+                # 计划在500毫秒后取消置顶
+                self.root.after(500, lambda: self.root.wm_attributes('-topmost', False))
+                logger.debug("主窗口已显示并短暂置顶")
         except Exception as e:
             logger.error(f"切换窗口可见性时出错: {e}")
 
@@ -883,6 +887,9 @@ class MainWindow:
             trigger_settings["ToggleMode"] = self.toggle_mode_var.get()
         if hasattr(self, 'attack_teammates_var'):
             trigger_settings["AttackOnTeammates"] = self.attack_teammates_var.get()
+        # 添加内存射击模式设置
+        if hasattr(self, 'memory_shoot_var'):
+            trigger_settings["MemoryShoot"] = self.memory_shoot_var.get()
         if hasattr(self, 'min_delay_entry'):
             try:
                 trigger_settings["ShotDelayMin"] = float(self.min_delay_entry.get())
@@ -1156,6 +1163,9 @@ class MainWindow:
             self.toggle_mode_var.set(trigger_settings["ToggleMode"])
         if hasattr(self, 'attack_teammates_var'):
             self.attack_teammates_var.set(trigger_settings["AttackOnTeammates"])
+        # 添加内存射击模式UI更新
+        if hasattr(self, 'memory_shoot_var'):
+            self.memory_shoot_var.set(trigger_settings.get("MemoryShoot", False))
 
         if hasattr(self, 'active_weapon_type'):
             self.active_weapon_type.set(trigger_settings.get('active_weapon_type', 'Rifles'))

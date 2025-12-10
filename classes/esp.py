@@ -12,7 +12,7 @@ from classes.utility import Utility
 # 设定主循环的休眠时间
 MAIN_LOOP_SLEEP = 0
 # 需要迭代处理的实体数量
-ENTITY_COUNT = 20
+ENTITY_COUNT = 64
 # 实体信息更新间隔（单位：秒）
 ENTITY_INFO_UPDATE_INTERVAL = 1
 # 初始化日志记录器，确保一致的日志记录
@@ -277,7 +277,7 @@ class CS2Overlay:
         settings = self.config['Overlay']
         self.enable_box = settings.get('enable_box', True)  # 确保默认值
         self.enable_skeleton = settings.get('enable_skeleton', True)
-        self.draw_snaplines = settings.get('draw_snaplines', False)
+        self.draw_snaplines_enabled = settings.get('draw_snaplines', False)
         self.snaplines_color_hex = settings.get('snaplines_color_hex', "#FFFF00")
         self.box_line_thickness = settings.get('box_line_thickness', 1.0)
         self.box_color_hex = settings.get('box_color_hex', "#FF0000")
@@ -594,9 +594,9 @@ class CS2Overlay:
                     pass
 
             # 使用优化的绘制方法
-            # 确保draw_snaplines是布尔值而不是函数或其他类型
-            draw_snaplines = self.draw_snaplines if isinstance(self.draw_snaplines, bool) else False
-            if draw_snaplines:
+            # 确保draw_snaplines_enabled是布尔值而不是函数或其他类型
+            draw_snaplines_enabled = self.draw_snaplines_enabled if isinstance(self.draw_snaplines_enabled, bool) else False
+            if draw_snaplines_enabled:
                 self.draw_snaplines(entity)
 
             if self.enable_box:
@@ -829,15 +829,7 @@ class CS2Overlay:
             except Exception as e:
                 logger.warning(f"使用游戏窗口初始化覆盖层失败: {e}")
                 
-            if not overlay_initialized:
-                try:
-                    # 回退到自定义窗口名称
-                    overlay.overlay_init("jian2486 Overlay", fps=self.target_fps)
-                    overlay_initialized = True
-                    logger.info("覆盖层已使用自定义窗口初始化: jian2486 Overlay")
-                except Exception as e:
-                    logger.error(f"使用自定义窗口初始化覆盖层失败: {e}")
-                    
+
             if not overlay_initialized:
                 # 最后的选择 - 尝试在桌面上创建覆盖层
                 try:

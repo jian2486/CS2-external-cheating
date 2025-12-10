@@ -258,6 +258,10 @@ def populate_trigger_settings(main_window, frame):
         value=main_window.triggerbot.config['Trigger'].get('ToggleMode', False))
     main_window.attack_teammates_var = ctk.BooleanVar(
         value=main_window.triggerbot.config['Trigger'].get('AttackOnTeammates', False))
+    
+    # 添加内存射击模式变量
+    main_window.memory_shoot_var = ctk.BooleanVar(
+        value=main_window.triggerbot.config['Trigger'].get('MemoryShoot', False))
 
     # 切换模式
     toggle_mode_checkbox = ctk.CTkCheckBox(
@@ -291,7 +295,24 @@ def populate_trigger_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    attack_teammates_checkbox.grid(row=0, column=3, padx=(0, 0), pady=(0, 0), sticky="w")
+    attack_teammates_checkbox.grid(row=0, column=3, padx=(0, 30), pady=(0, 0), sticky="w")
+    
+    # 内存射击模式
+    memory_shoot_checkbox = ctk.CTkCheckBox(
+        center_frame,
+        text="内存射击",
+        variable=main_window.memory_shoot_var,
+        width=25,
+        height=25,
+        corner_radius=0,
+        border_width=2,
+        fg_color=("#D5006D", "#E91E63"),
+        hover_color=("#B8004A", "#C2185B"),
+        checkmark_color="#ffffff",
+        command=main_window.save_settings,
+        font=(MAIN_FONT, INPUT_FONT_SIZE)
+    )
+    memory_shoot_checkbox.grid(row=0, column=4, padx=(0, 0), pady=(0, 0), sticky="w")
 
     # 创建延迟设置
     header_frame3 = ctk.CTkFrame(delay_section, fg_color="transparent")
