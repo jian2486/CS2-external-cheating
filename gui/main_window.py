@@ -3,12 +3,9 @@ import platform
 import threading
 from pathlib import Path
 from tkinter import messagebox
-
 import customtkinter as ctk
-import keyboard  # 添加键盘库导入
+import keyboard
 from PIL import Image, ImageTk
-
-# Windows系统防截屏功能的特定导入
 if platform.system() == "Windows":
     import ctypes
 from classes.utility import Utility
@@ -1036,57 +1033,62 @@ class MainWindow:
             
             aimbot_settings['WeaponSettings'][weapon_type] = weapon_settings
 
-        # 更新叠加层设置
-        overlay_settings = self.config["Overlay"]
+        # 保存覆盖层设置
+        overlay_settings = {}
+        
+        # 保存边框设置
         if hasattr(self, 'enable_box_var'):
             overlay_settings["enable_box"] = self.enable_box_var.get()
         if hasattr(self, 'enable_skeleton_var'):
             overlay_settings["enable_skeleton"] = self.enable_skeleton_var.get()
         if hasattr(self, 'box_line_thickness_slider'):
             overlay_settings["box_line_thickness"] = self.box_line_thickness_slider.get()
-            if hasattr(self, 'box_line_thickness_value_label'):
-                self.box_line_thickness_value_label.configure(text=f"{overlay_settings['box_line_thickness']:.1f}")
-        if hasattr(self, 'box_color_hex_combo'):
-            overlay_settings["box_color_hex"] = COLOR_CHOICES.get(self.box_color_hex_combo.get(), "#FFA500")
+        if hasattr(self, 'box_color_combo'):
+            overlay_settings["box_color_hex"] = COLOR_CHOICES[self.box_color_combo.get()]
+        if hasattr(self, 'target_fps_slider'):
+            overlay_settings["target_fps"] = int(self.target_fps_slider.get())
+        if hasattr(self, 'text_color_combo'):
+            overlay_settings["text_color_hex"] = COLOR_CHOICES[self.text_color_combo.get()]
+        if hasattr(self, 'snaplines_color_combo'):
+            overlay_settings["snaplines_color_hex"] = COLOR_CHOICES[self.snaplines_color_combo.get()]
         if hasattr(self, 'draw_snaplines_var'):
             overlay_settings["draw_snaplines"] = self.draw_snaplines_var.get()
-        if hasattr(self, 'snaplines_color_hex_combo'):
-            overlay_settings["snaplines_color_hex"] = COLOR_CHOICES.get(self.snaplines_color_hex_combo.get(), "#FFFFFF")
-        if hasattr(self, 'text_color_hex_combo'):
-            overlay_settings["text_color_hex"] = COLOR_CHOICES.get(self.text_color_hex_combo.get(), "#FFFFFF")
+        
+        # 保存玩家信息设置
         if hasattr(self, 'draw_health_numbers_var'):
             overlay_settings["draw_health_numbers"] = self.draw_health_numbers_var.get()
         if hasattr(self, 'draw_nicknames_var'):
             overlay_settings["draw_nicknames"] = self.draw_nicknames_var.get()
         if hasattr(self, 'use_transliteration_var'):
             overlay_settings["use_transliteration"] = self.use_transliteration_var.get()
+        
+        # 保存队友设置
         if hasattr(self, 'draw_teammates_var'):
             overlay_settings["draw_teammates"] = self.draw_teammates_var.get()
-        if hasattr(self, 'teammate_color_hex_combo'):
-            overlay_settings["teammate_color_hex"] = COLOR_CHOICES.get(self.teammate_color_hex_combo.get(), "#00FFFF")
+        if hasattr(self, 'teammate_color_combo'):
+            overlay_settings["teammate_color_hex"] = COLOR_CHOICES[self.teammate_color_combo.get()]
+        
+        # 保存小地图设置
         if hasattr(self, 'enable_minimap_var'):
             overlay_settings["enable_minimap"] = self.enable_minimap_var.get()
         if hasattr(self, 'minimap_size_slider'):
-            overlay_settings["minimap_size"] = int(self.minimap_size_slider.get())
-            if hasattr(self, 'minimap_size_value_label'):
-                self.minimap_size_value_label.configure(text=f"{overlay_settings['minimap_size']:.0f}")
-        if hasattr(self, 'target_fps_slider'):
-            overlay_settings["target_fps"] = self.target_fps_slider.get()
-            if hasattr(self, 'target_fps_value_label'):
-                self.target_fps_value_label.configure(text=f"{overlay_settings['target_fps']:.0f}")
-        # 更新发光效果设置
+            overlay_settings["minimap_size"] = self.minimap_size_slider.get()
+        
+        # 保存发光设置
         if hasattr(self, 'enable_glow_var'):
             overlay_settings["enable_glow"] = self.enable_glow_var.get()
         if hasattr(self, 'glow_exclude_dead_var'):
             overlay_settings["glow_exclude_dead"] = self.glow_exclude_dead_var.get()
         if hasattr(self, 'glow_teammates_var'):
             overlay_settings["glow_teammates"] = self.glow_teammates_var.get()
-        if hasattr(self, 'glow_thickness_slider'):
-            overlay_settings["glow_thickness"] = self.glow_thickness_slider.get()
-        if hasattr(self, 'glow_color_hex_combo'):
-            overlay_settings["glow_color_hex"] = COLOR_CHOICES.get(self.glow_color_hex_combo.get(), "#FF00FF")
-        if hasattr(self, 'glow_teammate_color_hex_combo'):
-            overlay_settings["glow_teammate_color_hex"] = COLOR_CHOICES.get(self.glow_teammate_color_hex_combo.get(), "#00FFFF")
+        if hasattr(self, 'glow_alpha_slider'):  # 修改：从glow_thickness_slider改为glow_alpha_slider
+            overlay_settings["glow_alpha"] = self.glow_alpha_slider.get()  # 修改：从glow_thickness改为glow_alpha
+        if hasattr(self, 'glow_color_combo'):
+            overlay_settings["glow_color_hex"] = COLOR_CHOICES[self.glow_color_combo.get()]
+        if hasattr(self, 'glow_teammate_color_combo'):
+            overlay_settings["glow_teammate_color_hex"] = COLOR_CHOICES[self.glow_teammate_color_combo.get()]
+        
+        self.config["Overlay"] = overlay_settings
 
         # 更新连跳设置
         bunnyhop_settings = self.config.get("Bunnyhop", {})
@@ -1268,8 +1270,10 @@ class MainWindow:
             self.active_aimbot_weapon_type.set(aimbot_settings.get('active_weapon_type', 'AK47'))
             self.update_aimbot_weapon_settings_display()
 
-        # 更新叠加层设置UI
+        # 加载覆盖层设置
         overlay_settings = self.config["Overlay"]
+        
+        # 加载边框设置
         if hasattr(self, 'enable_box_var'):
             self.enable_box_var.set(overlay_settings["enable_box"])
         if hasattr(self, 'enable_skeleton_var'):
@@ -1278,47 +1282,54 @@ class MainWindow:
             self.box_line_thickness_slider.set(overlay_settings["box_line_thickness"])
             if hasattr(self, 'box_line_thickness_value_label'):
                 self.box_line_thickness_value_label.configure(text=f"{overlay_settings['box_line_thickness']:.1f}")
-        if hasattr(self, 'box_color_hex_combo'):
-            self.box_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["box_color_hex"]))
+        if hasattr(self, 'box_color_combo'):
+            self.box_color_combo.set(Utility.get_color_name_from_hex(overlay_settings["box_color_hex"]))
+        if hasattr(self, 'target_fps_slider'):
+            self.target_fps_slider.set(overlay_settings["target_fps"])
+            if hasattr(self, 'target_fps_value_label'):
+                self.target_fps_value_label.configure(text=f"{overlay_settings['target_fps']:.0f}")
+        if hasattr(self, 'text_color_combo'):
+            self.text_color_combo.set(Utility.get_color_name_from_hex(overlay_settings["text_color_hex"]))
+        if hasattr(self, 'snaplines_color_combo'):
+            self.snaplines_color_combo.set(Utility.get_color_name_from_hex(overlay_settings["snaplines_color_hex"]))
         if hasattr(self, 'draw_snaplines_var'):
             self.draw_snaplines_var.set(overlay_settings["draw_snaplines"])
-        if hasattr(self, 'snaplines_color_hex_combo'):
-            self.snaplines_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["snaplines_color_hex"]))
-        if hasattr(self, 'text_color_hex_combo'):
-            self.text_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["text_color_hex"]))
+        
+        # 加载玩家信息设置
         if hasattr(self, 'draw_health_numbers_var'):
             self.draw_health_numbers_var.set(overlay_settings["draw_health_numbers"])
         if hasattr(self, 'draw_nicknames_var'):
             self.draw_nicknames_var.set(overlay_settings["draw_nicknames"])
         if hasattr(self, 'use_transliteration_var'):
             self.use_transliteration_var.set(overlay_settings["use_transliteration"])
+        
+        # 加载队友设置
         if hasattr(self, 'draw_teammates_var'):
             self.draw_teammates_var.set(overlay_settings["draw_teammates"])
-        if hasattr(self, 'teammate_color_hex_combo'):
-            self.teammate_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings["teammate_color_hex"]))
+        if hasattr(self, 'teammate_color_combo'):
+            self.teammate_color_combo.set(Utility.get_color_name_from_hex(overlay_settings["teammate_color_hex"]))
+        
+        # 加载小地图设置
         if hasattr(self, 'enable_minimap_var'):
             self.enable_minimap_var.set(overlay_settings["enable_minimap"])
         if hasattr(self, 'minimap_size_slider'):
             self.minimap_size_slider.set(overlay_settings["minimap_size"])
             if hasattr(self, 'minimap_size_value_label'):
                 self.minimap_size_value_label.configure(text=f"{overlay_settings['minimap_size']:.0f}")
-        if hasattr(self, 'target_fps_slider'):
-            self.target_fps_slider.set(overlay_settings["target_fps"])
-            if hasattr(self, 'target_fps_value_label'):
-                self.target_fps_value_label.configure(text=f"{overlay_settings['target_fps']:.0f}")
-        # 更新发光效果设置UI
+        
+        # 加载发光设置
         if hasattr(self, 'enable_glow_var'):
             self.enable_glow_var.set(overlay_settings.get("enable_glow", False))
         if hasattr(self, 'glow_exclude_dead_var'):
             self.glow_exclude_dead_var.set(overlay_settings.get("glow_exclude_dead", True))
         if hasattr(self, 'glow_teammates_var'):
             self.glow_teammates_var.set(overlay_settings.get("glow_teammates", False))
-        if hasattr(self, 'glow_thickness_slider'):
-            self.glow_thickness_slider.set(overlay_settings.get("glow_thickness", 1.0))
-        if hasattr(self, 'glow_color_hex_combo'):
-            self.glow_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_color_hex", "#FF00FF")))
-        if hasattr(self, 'glow_teammate_color_hex_combo'):
-            self.glow_teammate_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_teammate_color_hex", "#00FFFF")))
+        if hasattr(self, 'glow_alpha_slider'):  # 修改：从glow_thickness_slider改为glow_alpha_slider
+            self.glow_alpha_slider.set(overlay_settings.get("glow_alpha", 0.5))  # 修改：从glow_thickness改为glow_alpha
+        if hasattr(self, 'glow_color_combo'):
+            self.glow_color_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_color_hex", "#FF00FF")))
+        if hasattr(self, 'glow_teammate_color_combo'):
+            self.glow_teammate_color_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_teammate_color_hex", "#00FFFF")))
 
         # 更新连跳设置UI
         bunnyhop_settings = self.config.get("Bunnyhop", {})

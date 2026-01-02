@@ -30,8 +30,9 @@ class CS2Glow:
         self.glow_teammates = settings.get('glow_teammates', False)
         self.glow_color_hex = settings.get('glow_color_hex', "#FF00FF")
         self.glow_teammate_color_hex = settings.get('glow_teammate_color_hex', "#00FFFF")
+        self.glow_alpha = settings.get('glow_alpha', 0.5)  # 新增：透明度设置
         
-        # 将十六进制颜色转换为RGBA格式 (0x800000FF)
+        # 将十六进制颜色和透明度转换为RGBA格式
         # 默认为洋红色，带一定透明度
         if self.glow_color_hex.startswith('#'):
             hex_value = self.glow_color_hex[1:]
@@ -39,22 +40,24 @@ class CS2Glow:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用0x80作为alpha值（50%透明度）
-                self.glow_color_rgba = (0x80 << 24) | (b << 16) | (g << 8) | r
+                # 使用用户设置的透明度值（0.0-1.0）转换为0-255范围的alpha值
+                alpha = int(self.glow_alpha * 255)
+                self.glow_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_color_rgba = 0x800000FF  # 默认洋红色
         else:
             self.glow_color_rgba = 0x800000FF  # 默认洋红色
             
-        # 将十六进制队友颜色转换为RGBA格式
+        # 将十六进制队友颜色和透明度转换为RGBA格式
         if self.glow_teammate_color_hex.startswith('#'):
             hex_value = self.glow_teammate_color_hex[1:]
             if len(hex_value) == 6:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用0x80作为alpha值（50%透明度）
-                self.glow_teammate_color_rgba = (0x80 << 24) | (b << 16) | (g << 8) | r
+                # 使用用户设置的透明度值（0.0-1.0）转换为0-255范围的alpha值
+                alpha = int(self.glow_alpha * 255)
+                self.glow_teammate_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_teammate_color_rgba = 0x80FFFF00  # 默认青色
         else:

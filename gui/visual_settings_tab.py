@@ -83,7 +83,7 @@ def create_glow_section(main_window, parent):
         ("敌人发光", "checkbox", "enable_glow", "切换敌人发光效果可见性"),
         ("不对尸体发光", "checkbox", "glow_exclude_dead", "切换是否对尸体应用发光效果"),
         ("队友发光", "checkbox", "glow_teammates", "切换是否对队友应用发光效果"),
-        ("发光粗细", "slider", "glow_thickness", "调整发光效果粗细 (0.5-5.0)"),
+        ("发光透明度", "slider", "glow_alpha", "调整发光效果透明度 (0.0-1.0)"),
         ("敌人发光颜色", "combo", "glow_color_hex", "选择敌人发光效果颜色"),
         ("队友发光颜色", "combo", "glow_teammate_color_hex", "选择队友发光效果颜色")
     ]
@@ -247,8 +247,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             value_text = f"{initial_value:.0f}"
         elif key == "minimap_size":
             value_text = f"{initial_value:.0f}"
-        elif key == "glow_thickness":
-            value_text = f"{initial_value:.1f}"
+        elif key == "glow_alpha":
+            value_text = f"{initial_value:.2f}"
         else:
             value_text = f"{initial_value:.1f}"
             
@@ -267,8 +267,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             from_val, to_val, steps = 60, 420, 3
         elif key == "minimap_size":
             from_val, to_val, steps = 100, 500, 40
-        elif key == "glow_thickness":
-            from_val, to_val, steps = 0.5, 5.0, 9
+        elif key == "glow_alpha":
+            from_val, to_val, steps = 0.0, 1.0, 100
         else:
             from_val, to_val, steps = 0.0, 1.0, 100
             
@@ -291,6 +291,11 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         )
         widget.set(initial_value)
         widget.pack(side="left")
+        
+        # 存储引用以供后续使用
+        widget.value_label = value_label
+        main_window.__setattr__(f"{key}_slider", widget)
+        main_window.__setattr__(f"{key}_value_label", value_label)
         
     elif widget_type == "combo":
         # 具有改进样式的增强组合框
