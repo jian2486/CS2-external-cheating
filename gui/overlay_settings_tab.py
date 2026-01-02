@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from classes.config_manager import COLOR_CHOICES, ConfigManager
+
+from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
 from gui.font_manager import *
 

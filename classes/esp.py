@@ -1,12 +1,14 @@
+import struct
 import threading
 import time
-import pyMeow as overlay
-import struct
-import numpy as np
 from typing import Iterator, Optional, Dict
+
+import numpy as np
+import pyMeow as overlay
+
 from classes.config_manager import ConfigManager, Colors
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 from classes.utility import Utility
 
 # 设定主循环的睡眠时间

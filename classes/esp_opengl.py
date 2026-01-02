@@ -6,7 +6,6 @@ import time
 import struct
 import numpy as np
 from typing import Iterator, Optional, Dict
-from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
@@ -22,7 +21,7 @@ MAIN_LOOP_SLEEP = 0.05
 # 遍历的实体数量
 ENTITY_COUNT = 64
 # 每个实体条目在内存中的大小
-ENTITY_ENTRY_SIZE = 120
+
 
 # 骨骼连接定义
 # 骨骼ID: [连接的骨骼ID列表]
@@ -231,7 +230,7 @@ class CS2OverlayOpenGL:
                 entry_ptr = self.memory_manager.read_longlong(ent_list_ptr + (8 * list_index) + 16)
                 if not entry_ptr: continue
 
-                controller_ptr = self.memory_manager.read_longlong(entry_ptr + ENTITY_ENTRY_SIZE * entity_index)
+                controller_ptr = self.memory_manager.read_longlong(entry_ptr + self.memory_manager.ENTITY_ENTRY_SIZE * entity_index)
                 if not controller_ptr or controller_ptr == local_controller_ptr: continue
 
                 controller_pawn_ptr = self.memory_manager.read_longlong(controller_ptr + self.memory_manager.m_hPlayerPawn)
@@ -240,7 +239,7 @@ class CS2OverlayOpenGL:
                 list_entry_ptr = self.memory_manager.read_longlong(ent_list_ptr + 8 * ((controller_pawn_ptr & 0x7FFF) >> 9) + 16)
                 if not list_entry_ptr: continue
 
-                pawn_ptr = self.memory_manager.read_longlong(list_entry_ptr + ENTITY_ENTRY_SIZE * (controller_pawn_ptr & 0x1FF))
+                pawn_ptr = self.memory_manager.read_longlong(list_entry_ptr + self.memory_manager.ENTITY_ENTRY_SIZE * (controller_pawn_ptr & 0x1FF))
                 if not pawn_ptr: continue
 
                 # 性能优化：检查实体是否在合理距离内
@@ -613,9 +612,7 @@ class CS2OverlayOpenGL:
         hwnd = pygame.display.get_wm_info()["window"]
         import win32gui
         import win32con
-        import ctypes
-        from ctypes import wintypes
-        
+
         # 设置窗口始终在最上层
         win32gui.SetWindowPos(
             hwnd,

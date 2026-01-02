@@ -1,9 +1,10 @@
-import customtkinter as ctk
-from classes.config_manager import ConfigManager
 import threading
 import time
-from gui.font_manager import *
+
+import customtkinter as ctk
 import keyboard
+
+from gui.font_manager import *
 
 # 定义武器类型列表 - 现在是具体的武器名称
 WEAPON_TYPES = [

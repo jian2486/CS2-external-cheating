@@ -1,5 +1,6 @@
 import os
 import threading
+
 from watchdog.events import FileSystemEventHandler
 
 from classes.config_manager import ConfigManager

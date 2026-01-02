@@ -1,11 +1,11 @@
 """视觉设置标签页模块"""
 
 import customtkinter as ctk
-from classes.config_manager import COLOR_CHOICES, ConfigManager
+
+from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
 from gui.font_manager import *
 from gui.overlay_settings_tab import save_checkbox_setting, update_slider_value
-from gui.additional_settings_tab import update_slider_value as noflash_update_slider_value
 
 
 def populate_visual_settings(main_window, frame):

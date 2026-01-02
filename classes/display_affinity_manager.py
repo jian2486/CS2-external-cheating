@@ -1,8 +1,9 @@
 import ctypes
 import threading
 import time
-from classes.logger import Logger
 from ctypes import wintypes
+
+from classes.logger import Logger
 
 logger = Logger.get_logger()
 

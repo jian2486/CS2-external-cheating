@@ -1,11 +1,12 @@
 import os
-import threading
 import platform
-import customtkinter as ctk
+import threading
+from pathlib import Path
 from tkinter import messagebox
+
+import customtkinter as ctk
 import keyboard  # 添加键盘库导入
 from PIL import Image, ImageTk
-from pathlib import Path
 
 # Windows系统防截屏功能的特定导入
 if platform.system() == "Windows":
@@ -34,6 +35,7 @@ from gui.visual_settings_tab import populate_visual_settings
 from gui.movement_settings_tab import populate_movement_settings
 from gui.font_manager import *
 from classes.display_affinity_manager import DisplayAffinityManager
+from gui.draggable_window import DraggableWindow  # 导入可拖动窗口
 
 # 缓存日志记录器实例，以便在整个应用程序中保持一致的日志记录
 logger = Logger.get_logger()
@@ -117,6 +119,14 @@ class MainWindow:
         
         # 注册Insert键呼出窗口的热键
         self.register_hotkey()
+        
+        # 初始化功能状态窗口
+        self.feature_status_window = DraggableWindow(self)
+        
+        # 根据配置决定功能状态窗口的初始可见性
+        feature_status_enabled = self.config.get("General", {}).get("FeatureStatusWindow", True)
+        if not feature_status_enabled:
+            self.feature_status_window.set_visibility(False)
 
     def register_hotkey(self):
         """注册Insert键作为呼出主窗口的热键"""
@@ -126,12 +136,16 @@ class MainWindow:
             logger.error(f"注册热键失败: {e}")
 
     def toggle_window_visibility(self):
-        """切换主窗口的可见性，并在显示时短暂置顶"""
+        """切换主窗口的可见性，并在显示时短暂置顶，但不影响功能状态窗口"""
         try:
             if self.root.winfo_viewable():
                 # 如果窗口可见，则隐藏它
                 self.root.withdraw()
                 logger.debug("主窗口已隐藏")
+                
+                # 确保功能状态窗口保持可见（如果配置允许）
+                # 使用after方法确保在主线程中更新UI
+                self.root.after(100, self._ensure_feature_status_window_visibility)
             else:
                 # 如果窗口隐藏，则显示它
                 self.root.deiconify()
@@ -142,6 +156,10 @@ class MainWindow:
                 # 计划在500毫秒后取消置顶
                 self.root.after(500, lambda: self.root.wm_attributes('-topmost', False))
                 logger.debug("主窗口已显示并短暂置顶")
+                
+                # 确保功能状态窗口保持可见（如果配置允许）
+                # 使用after方法确保在主线程中更新UI
+                self.root.after(100, self._ensure_feature_status_window_visibility)
         except Exception as e:
             logger.error(f"切换窗口可见性时出错: {e}")
 
@@ -550,6 +568,31 @@ class MainWindow:
         except Exception as e:
             logger.warning(f"无法将窗口图标更新为 {icon_path}: {e}")
 
+    def check_any_feature_running(self):
+        """检查是否有任何功能正在运行"""
+        features = [
+            getattr(self.triggerbot, 'is_running', False),
+            getattr(self.aimbot, 'is_running', False),
+            getattr(self.overlay, 'is_running', False),
+            getattr(self.overlay_opengl, 'is_running', False),
+            getattr(self.overlay_vulkan, 'is_running', False),
+            getattr(self.bunnyhop, 'is_running', False),
+            getattr(self.noflash, 'is_running', False),
+            getattr(self.glow, 'is_running', False)
+        ]
+        return any(features)
+    
+    def _ensure_feature_status_window_visibility(self):
+        """确保功能状态窗口保持可见（在主线程中调用）"""
+        try:
+            feature_status_enabled = self.config.get("General", {}).get("FeatureStatusWindow", True)
+            if feature_status_enabled and hasattr(self, 'feature_status_window'):
+                # 重新显示功能状态窗口，如果它应该显示的话
+                if self.check_any_feature_running():
+                    self.feature_status_window.show_window()
+        except Exception as e:
+            logger.error(f"更新功能状态窗口可见性时出错: {e}")
+
     def _start_feature(self, feature_name, feature_obj, config):
         """启动单个功能的辅助方法"""
         if not getattr(feature_obj, 'is_running', False):
@@ -681,6 +724,10 @@ class MainWindow:
         if any_feature_started:
             self.client_running = True  # 设置客户端运行状态
             self.update_client_status("运行中", "#22c55e")
+            # 检查配置是否启用了功能状态窗口
+            feature_status_enabled = self.config.get("General", {}).get("FeatureStatusWindow", True)
+            if feature_status_enabled:
+                self.feature_status_window.show_window()
         else:
             logger.warning("常规设置中未启用任何功能")
             messagebox.showwarning("未启用功能", "请在常规设置中至少启用一个功能")
@@ -717,6 +764,11 @@ class MainWindow:
         if features_stopped:
             self.client_running = False  # 设置客户端停止状态
             self.update_client_status("已停止", "#ef4444")
+            # 检查是否还有功能在运行，如果没有则根据配置决定是否隐藏功能状态窗口
+            if not self.check_any_feature_running():
+                feature_status_enabled = self.config.get("General", {}).get("FeatureStatusWindow", True)
+                if not feature_status_enabled:
+                    self.feature_status_window.hide_window()
         else:
             logger.debug("没有正在运行的功能需要停止")
 
@@ -1335,6 +1387,10 @@ class MainWindow:
                 logger.info("所有热键已移除")
             except Exception as e:
                 logger.error(f"移除热键时出错: {e}")
+            
+            # 销毁功能状态窗口
+            if hasattr(self, 'feature_status_window'):
+                self.feature_status_window.destroy()
         except Exception as e:
             logger.error("清理过程中出错: %s", e)
 

@@ -1,9 +1,10 @@
+import struct
 import threading
 import time
-import struct
+
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 
 # 初始化日志记录器，确保一致的日志记录
 logger = Logger.get_logger()

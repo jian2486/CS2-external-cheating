@@ -1,11 +1,15 @@
-import threading, time, random, keyboard, winsound
+import keyboard
+import random
+import threading
+import time
+import winsound
 
-from pynput.mouse import Controller, Button, Listener as MouseListener
 from pynput.keyboard import Listener as KeyboardListener
+from pynput.mouse import Controller, Button, Listener as MouseListener
 
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 from classes.utility import Utility
 
 # 初始化鼠标控制器和日志记录器
@@ -46,8 +50,10 @@ class CS2TriggerBot:
         # 添加内存射击模式配置
         self.memory_shoot = settings.get('MemoryShoot', False)
         
-        active_weapon = settings.get("active_weapon_type", "Rifles")
-        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"]["Rifles"])
+        active_weapon = settings.get("active_weapon_type", "AK47")
+        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"].get("AK47", settings["WeaponSettings"].get("Rifles", {
+            "ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02
+        })))
         
         self.shot_delay_min = weapon_settings['ShotDelayMin']
         self.shot_delay_max = weapon_settings['ShotDelayMax']
@@ -69,14 +75,20 @@ class CS2TriggerBot:
         # 已移除调试日志
 
     def play_toggle_sound(self, state: bool) -> None:
-        """按下切换键时播放声音。"""
+        """按下切换键时播放声音（异步执行，不阻塞主线程）。"""
+        import threading
+        sound_thread = threading.Thread(target=self._play_sound, args=(state,), daemon=True)
+        sound_thread.start()
+    
+    def _play_sound(self, state: bool) -> None:
+        """实际播放声音的方法（在独立线程中运行）"""
         try:
             if state:
-                # 激活声音：频率1000Hz，持续时间200毫秒
-                winsound.Beep(1000, 200)
+                # 激活声音：频率1000Hz，持续时间100毫秒
+                winsound.Beep(1000, 100)
             else:
-                # 停用声音：频率500Hz，持续时间200毫秒
-                winsound.Beep(500, 200)
+                # 停用声音：频率500Hz，持续时间100毫秒
+                winsound.Beep(500, 100)
         except Exception as e:
             logger.error(f"播放切换声音时出错: {e}")
 
@@ -86,7 +98,7 @@ class CS2TriggerBot:
             # 直接返回trigger_active状态，因为我们依赖鼠标监听器来设置这个状态
             return self.trigger_active
         except Exception as e:
-            logger.error(f"Error checking mouse pressed state: {e}")
+            logger.error(f"查询鼠标触发键状态时出错: {e}")
             return False
 
     def on_key_press(self, key) -> None:
@@ -142,7 +154,6 @@ class CS2TriggerBot:
         teams_valid = (entity_team in valid_team_ids) and (player_team in valid_team_ids)
         
         result = teams_valid and (self.attack_on_teammates or entity_team != player_team) and entity_health > 0
-        # 已移除调试日志
         return result
 
     def start(self) -> None:
@@ -173,26 +184,25 @@ class CS2TriggerBot:
                         is_key_pressed = self.trigger_active
                     else:
                         is_key_pressed = keyboard.is_pressed(self.trigger_key)
-                
-                # 已移除调试日志
 
                 if not self.toggle_mode and not is_key_pressed:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
                 data = self.memory_manager.get_fire_logic_data()
-                # 已移除调试日志
                 
-                # 临时日志：输出当前检测到的武器
-                if data and "weapon_type" in data:
-                    weapon_type = data.get("weapon_type", "Unknown")
-                    logger.info(f"当前检测到的武器: {weapon_type}")
+                # 输出当前检测到的武器
+                #if data and "weapon_type" in data:
+                #    weapon_type = data.get("weapon_type", "Unknown")
+                #    logger.info(f"当前检测到的武器: {weapon_type}")
                 
                 # 修改条件判断，确保data存在且有效
                 if data and "entity_team" in data and "player_team" in data and "entity_health" in data:
                     if self.should_trigger(data["entity_team"], data["player_team"], data["entity_health"]):
                         weapon_type = data.get("weapon_type", "Rifles")
-                        weapon_settings = self.config['Trigger']['WeaponSettings'].get(weapon_type, self.config['Trigger']['WeaponSettings']['Rifles'])
+                        weapon_settings = self.config['Trigger']['WeaponSettings'].get(weapon_type, self.config['Trigger']['WeaponSettings'].get('AK47', self.config['Trigger']['WeaponSettings'].get('Rifles', {
+                            'ShotDelayMin': 0.02, 'ShotDelayMax': 0.04, 'PostShotDelay': 0.02
+                        })))
                         
                         shot_delay_min = weapon_settings['ShotDelayMin']
                         shot_delay_max = weapon_settings['ShotDelayMax']
@@ -222,7 +232,6 @@ class CS2TriggerBot:
         """停止TriggerBot并清理资源。"""
         self.is_running = False
         self.stop_event.set()
-        time.sleep(0.05)  # 短延迟以允许线程处理停止事件
         try:
             if hasattr(self.keyboard_listener, 'running') and self.keyboard_listener.running:
                 self.keyboard_listener.stop()

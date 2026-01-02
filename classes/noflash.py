@@ -3,8 +3,8 @@ import time
 from typing import Optional
 
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 from classes.utility import Utility
 
 # 初始化日志记录器以保持日志一致性

@@ -1,13 +1,16 @@
-import threading, time, keyboard, winsound
+import keyboard
 import math
-from pynput.mouse import Controller, Button, Listener as MouseListener
-from pynput.keyboard import Listener as KeyboardListener
+import threading
+import time
+import winsound
+
 import win32api
-import win32con
+from pynput.keyboard import Listener as KeyboardListener
+from pynput.mouse import Controller, Button, Listener as MouseListener
 
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 from classes.utility import Utility
 
 # 初始化鼠标控制器和日志记录器
@@ -51,8 +54,10 @@ class CS2Aimbot:
         self.toggle_mode = settings['ToggleMode']
         self.attack_on_teammates = settings['AttackOnTeammates']
         
-        active_weapon = settings.get("active_weapon_type", "Rifles")
-        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"]["Rifles"])
+        active_weapon = settings.get("active_weapon_type", "AK47")
+        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"].get("AK47", settings["WeaponSettings"].get("Rifles", {
+            'FOV': 50, 'Smooth': 2.0
+        })))
         
         self.fov = weapon_settings['FOV']
         self.smooth = weapon_settings['Smooth']
@@ -76,11 +81,11 @@ class CS2Aimbot:
         """当切换键被按下时播放声音。"""
         try:
             if state:
-                # 激活声音：频率1200 Hz，持续时间200毫秒
-                winsound.Beep(1200, 200)
+                # 激活声音：频率1500 Hz，持续时间100毫秒
+                winsound.Beep(1500, 100)
             else:
-                # 停用声音：频率600 Hz，持续时间200毫秒
-                winsound.Beep(600, 200)
+                # 停用声音：频率400 Hz，持续时间100毫秒
+                winsound.Beep(400, 100)
         except Exception as e:
             logger.error("播放切换声音时出错: {e}")
 
