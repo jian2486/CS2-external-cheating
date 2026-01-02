@@ -25,6 +25,7 @@ class ConfigManager:
             "Bunnyhop": False,
             "Noflash": False,
             "Glow": False,
+            "FeatureStatusWindow": True,  # 新增：功能状态窗口开关
             "RenderMode": "默认(pyMeow)"  # 添加渲染模式选项
         },
         "Trigger": {
@@ -34,6 +35,7 @@ class ConfigManager:
             "MemoryShoot": False,  # 添加内存射击模式选项
             "active_weapon_type": "AK47",
             "WeaponSettings": {
+                "Rifles": {"ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02},
                 "AK47": {"ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02},
                 "M4A4": {"ShotDelayMin": 0.01, "ShotDelayMax": 0.03, "PostShotDelay": 0.02},
                 "Deagle": {"ShotDelayMin": 0.05, "ShotDelayMax": 0.1, "PostShotDelay": 0.5},
@@ -74,6 +76,7 @@ class ConfigManager:
             "Smooth": 2.0,
             "active_weapon_type": "AK47",
             "WeaponSettings": {
+                "Rifles": {"FOV": 50, "Smooth": 2.0},
                 "AK47": {"FOV": 30, "Smooth": 3.0},
                 "M4A4": {"FOV": 50, "Smooth": 2.0},
                 "Deagle": {"FOV": 100, "Smooth": 1.0},

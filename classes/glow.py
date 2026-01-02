@@ -27,6 +27,7 @@ class CS2Glow:
         self.enable_glow = settings.get('enable_glow', False)
         self.glow_exclude_dead = settings.get('glow_exclude_dead', True)
         self.glow_teammates = settings.get('glow_teammates', False)
+        self.glow_thickness = settings.get('glow_thickness', 1.0)
         self.glow_color_hex = settings.get('glow_color_hex', "#FF00FF")
         self.glow_teammate_color_hex = settings.get('glow_teammate_color_hex', "#00FFFF")
         
@@ -38,8 +39,9 @@ class CS2Glow:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用0x80作为alpha值（50%透明度）
-                self.glow_color_rgba = (0x80 << 24) | (b << 16) | (g << 8) | r
+                # 使用glow_thickness作为alpha值（透明度），范围0.5-5.0映射到0-255
+                alpha = int(min(max((self.glow_thickness - 0.5) / (5.0 - 0.5) * 255, 0), 255))
+                self.glow_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_color_rgba = 0x800000FF  # 默认洋红色
         else:
@@ -52,8 +54,9 @@ class CS2Glow:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用0x80作为alpha值（50%透明度）
-                self.glow_teammate_color_rgba = (0x80 << 24) | (b << 16) | (g << 8) | r
+                # 使用glow_thickness作为alpha值（透明度），范围0.5-5.0映射到0-255
+                alpha = int(min(max((self.glow_thickness - 0.5) / (5.0 - 0.5) * 255, 0), 255))
+                self.glow_teammate_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_teammate_color_rgba = 0x80FFFF00  # 默认青色
         else:

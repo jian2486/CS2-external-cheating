@@ -51,8 +51,10 @@ class CS2Aimbot:
         self.toggle_mode = settings['ToggleMode']
         self.attack_on_teammates = settings['AttackOnTeammates']
         
-        active_weapon = settings.get("active_weapon_type", "Rifles")
-        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"]["Rifles"])
+        active_weapon = settings.get("active_weapon_type", "AK47")
+        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"].get("AK47", settings["WeaponSettings"].get("Rifles", {
+            'FOV': 50, 'Smooth': 2.0
+        })))
         
         self.fov = weapon_settings['FOV']
         self.smooth = weapon_settings['Smooth']

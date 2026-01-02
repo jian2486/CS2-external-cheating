@@ -547,6 +547,10 @@ def update_slider_value(event, key, main_window):
             formatted_value = f"{value:.0f}"
         elif key == "minimap_size":
             formatted_value = f"{value:.0f}"
+        elif key == "glow_thickness":
+            # 将glow_thickness值(0.5-5.0)转换为百分比形式显示
+            percentage = ((value - 0.5) / (5.0 - 0.5)) * 100
+            formatted_value = f"{percentage:.0f}%"
         else:
             formatted_value = f"{value:.1f}"
             

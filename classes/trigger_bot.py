@@ -46,8 +46,10 @@ class CS2TriggerBot:
         # 添加内存射击模式配置
         self.memory_shoot = settings.get('MemoryShoot', False)
         
-        active_weapon = settings.get("active_weapon_type", "Rifles")
-        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"]["Rifles"])
+        active_weapon = settings.get("active_weapon_type", "AK47")
+        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"].get("AK47", settings["WeaponSettings"].get("Rifles", {
+            "ShotDelayMin": 0.02, "ShotDelayMax": 0.04, "PostShotDelay": 0.02
+        })))
         
         self.shot_delay_min = weapon_settings['ShotDelayMin']
         self.shot_delay_max = weapon_settings['ShotDelayMax']
@@ -192,7 +194,9 @@ class CS2TriggerBot:
                 if data and "entity_team" in data and "player_team" in data and "entity_health" in data:
                     if self.should_trigger(data["entity_team"], data["player_team"], data["entity_health"]):
                         weapon_type = data.get("weapon_type", "Rifles")
-                        weapon_settings = self.config['Trigger']['WeaponSettings'].get(weapon_type, self.config['Trigger']['WeaponSettings']['Rifles'])
+                        weapon_settings = self.config['Trigger']['WeaponSettings'].get(weapon_type, self.config['Trigger']['WeaponSettings'].get('AK47', self.config['Trigger']['WeaponSettings'].get('Rifles', {
+                            'ShotDelayMin': 0.02, 'ShotDelayMax': 0.04, 'PostShotDelay': 0.02
+                        })))
                         
                         shot_delay_min = weapon_settings['ShotDelayMin']
                         shot_delay_max = weapon_settings['ShotDelayMax']

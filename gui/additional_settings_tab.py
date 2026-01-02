@@ -207,6 +207,50 @@ def populate_additional_settings(main_window, frame):
         main_window
     )
 
+    # 创建具有现代样式的功能状态窗口设置部分
+    feature_status_section = ctk.CTkFrame(
+        settings,
+        corner_radius=0,
+        fg_color=("#ffffff", "#1a1b23"),
+        border_width=2,
+        border_color=("#e2e8f0", "#2d3748")
+    )
+    feature_status_section.pack(fill="x", pady=(0, 30))
+
+    # 部分标题和描述的框架
+    feature_status_header = ctk.CTkFrame(feature_status_section, fg_color="transparent")
+    feature_status_header.pack(fill="x", padx=40, pady=(40, 30))
+
+    # 带图标的部分标题
+    ctk.CTkLabel(
+        feature_status_header,
+        text="功能状态窗口",
+        font=(MAIN_FONT, SECTION_TITLE_FONT_SIZE, "bold"),
+        text_color=("#1f2937", "#ffffff"),
+        anchor="w"
+    ).pack(side="left")
+
+    # 部分目的的描述
+    ctk.CTkLabel(
+        feature_status_header,
+        text="显示运行中的功能列表",
+        font=(SECONDARY_FONT, SECTION_SUBTITLE_FONT_SIZE),
+        text_color=("#64748b", "#94a3b8"),
+        anchor="e"
+    ).pack(side="right")
+
+    # 功能状态窗口配置的设置列表
+    feature_status_settings_list = [
+        ("显示功能状态窗口", "checkbox", "FeatureStatusWindow", "显示运行中的功能列表")
+    ]
+
+    # 创建每个设置项
+    create_settings_grid(
+        feature_status_section,
+        feature_status_settings_list,
+        main_window
+    )
+
 def create_settings_grid(parent, settings_list, main_window):
     """创建每行2项设置的网格"""
     # 设置项网格的框架
@@ -298,6 +342,27 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             widget.bind("<FocusOut>", lambda e: main_window.save_settings())
             widget.bind("<Return>", lambda e: main_window.save_settings())
         widget.pack()
+
+    elif widget_type == "checkbox" and key != "AntiScreenshot":
+        # Create feature status window checkbox
+        var = ctk.BooleanVar()
+        config = ConfigManager.load_config()
+        var.set(config["General"].get(key, True))  # 默认设置为True（开启）
+        widget = ctk.CTkCheckBox(
+            widget_frame,
+            text="",
+            variable=var,
+            width=40,
+            height=20,
+            corner_radius=0,
+            border_width=2,
+            border_color=("#d1d5db", "#374151"),
+            fg_color=("#D5006D", "#E91E63"),
+            hover_color=("#B8004A", "#C2185B"),
+            command=lambda: toggle_feature_status_window(main_window, var.get())
+        )
+        widget.pack()
+        main_window.__setattr__(f"{key}_var", var)
 
     elif widget_type == "slider":
         # Create container for slider and value display
@@ -416,6 +481,25 @@ def toggle_anti_screenshot(main_window, enabled):
     except Exception as e:
         logger = Logger.get_logger()
         logger.error(f"切换防截屏功能时出错: {e}")
+
+def toggle_feature_status_window(main_window, enabled):
+    """切换功能状态窗口显示"""
+    try:
+        # 更新配置
+        main_window.config["General"]["FeatureStatusWindow"] = enabled
+        main_window.save_settings(show_message=False)
+        
+        # 根据设置显示或隐藏功能状态窗口
+        if hasattr(main_window, 'feature_status_window'):
+            if enabled:
+                # 如果有功能正在运行，则显示窗口
+                if main_window.check_any_feature_running():
+                    main_window.feature_status_window.show_window()
+            else:
+                main_window.feature_status_window.hide_window()
+    except Exception as e:
+        logger = Logger.get_logger()
+        logger.error(f"切换功能状态窗口时出错: {e}")
 
 def update_slider_value(event, key, main_window):
     """更新滑块值标签并保存设置"""

@@ -83,7 +83,7 @@ def create_glow_section(main_window, parent):
         ("敌人发光", "checkbox", "enable_glow", "切换敌人发光效果可见性"),
         ("不对尸体发光", "checkbox", "glow_exclude_dead", "切换是否对尸体应用发光效果"),
         ("队友发光", "checkbox", "glow_teammates", "切换是否对队友应用发光效果"),
-        ("发光粗细", "slider", "glow_thickness", "调整发光效果粗细 (0.5-5.0)"),
+        ("发光透明度", "slider", "glow_thickness", "调整发光效果透明度 (0.5-5.0)"),
         ("敌人发光颜色", "combo", "glow_color_hex", "选择敌人发光效果颜色"),
         ("队友发光颜色", "combo", "glow_teammate_color_hex", "选择队友发光效果颜色")
     ]
@@ -248,7 +248,9 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         elif key == "minimap_size":
             value_text = f"{initial_value:.0f}"
         elif key == "glow_thickness":
-            value_text = f"{initial_value:.1f}"
+            # 将glow_thickness值(0.5-5.0)转换为百分比形式显示
+            percentage = ((initial_value - 0.5) / (5.0 - 0.5)) * 100
+            value_text = f"{percentage:.0f}%"
         else:
             value_text = f"{initial_value:.1f}"
             
@@ -291,6 +293,11 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         )
         widget.set(initial_value)
         widget.pack(side="left")
+        
+        # 存储引用以供后续使用
+        widget.value_label = value_label
+        main_window.__setattr__(f"{key}_slider", widget)
+        main_window.__setattr__(f"{key}_value_label", value_label)
         
     elif widget_type == "combo":
         # 具有改进样式的增强组合框
