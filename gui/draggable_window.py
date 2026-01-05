@@ -1,8 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-import threading
-import time
-from typing import List, Optional
+from typing import List
 
 # 导入字体管理器
 from gui.font_manager import SECONDARY_FONT, INPUT_FONT_SIZE
@@ -105,19 +103,7 @@ class DraggableWindow:
             font=(SECONDARY_FONT, INPUT_FONT_SIZE, 'bold')
         )
         drag_label.pack(side='left', padx=10, pady=5)
-        
-        # 不再显示关闭按钮，窗口不能被关闭
-        # close_btn = tk.Button(
-        #     self.drag_bar,
-        #     text="×",
-        #     bg='#4a4a4a',
-        #     fg='white',
-        #     bd=0,
-        #     font=('Arial', 12, 'bold'),
-        #     command=self.hide_window
-        # )
-        # close_btn.pack(side='right', padx=5, pady=2)
-        
+
         # 功能列表框架
         self.list_frame = tk.Frame(self.root, bg='#2d2d2d')
         self.list_frame.pack(fill='both', expand=True, padx=1, pady=1)
@@ -187,31 +173,11 @@ class DraggableWindow:
         
         # 添加新的功能标签
         for i, feature in enumerate(self.running_features):
-            # 检查是否是TriggerBot功能，如果是，检查是否在切换模式下激活
-            if feature == "扳机" and self.main_window_ref and hasattr(self.main_window_ref, 'triggerbot'):
-                triggerbot = self.main_window_ref.triggerbot
-                if getattr(triggerbot, 'toggle_mode', False) and getattr(triggerbot, 'is_running', False):
-                    # 在切换模式下，显示激活状态
-                    is_active = triggerbot.is_active()
-                    if is_active:
-                        feature_text = f"• {feature} (激活)"
-                        fg_color = '#4ade80'  # 绿色，表示激活
-                    else:
-                        feature_text = f"• {feature} (未激活)"
-                        fg_color = '#f87171'  # 红色，表示未激活
-                else:
-                    # 非切换模式，或功能未运行
-                    feature_text = f"• {feature}"
-                    fg_color = '#4ade80'  # 绿色
-            else:
-                feature_text = f"• {feature}"
-                fg_color = '#4ade80'  # 绿色
-
             label = tk.Label(
                 self.scrollable_frame,
-                text=feature_text,
+                text=f"• {feature}",
                 bg='#2d2d2d',
-                fg=fg_color,
+                fg='#4ade80',  # 绿色
                 font=(SECONDARY_FONT, INPUT_FONT_SIZE),
                 anchor='w'
             )
@@ -225,15 +191,78 @@ class DraggableWindow:
         # 根据功能数量动态调整窗口大小
         self._adjust_window_size()
 
+    def update_status_loop(self):
+        """定期更新状态的循环"""
+        if self.main_window_ref:
+            try:
+                # 从主窗口获取当前运行的功能
+                running_features = []
+                
+                # 检查各个功能是否正在运行
+                if hasattr(self.main_window_ref, 'triggerbot') and self._is_triggerbot_running():
+                    running_features.append("扳机")
+                if hasattr(self.main_window_ref, 'aimbot') and getattr(self.main_window_ref.aimbot, 'is_running', False):
+                    running_features.append("自瞄")
+                if hasattr(self.main_window_ref, 'overlay') and getattr(self.main_window_ref.overlay, 'is_running', False):
+                    running_features.append("透视")
+                if hasattr(self.main_window_ref, 'bunnyhop') and getattr(self.main_window_ref.bunnyhop, 'is_running', False):
+                    running_features.append("连跳")
+                if hasattr(self.main_window_ref, 'noflash') and getattr(self.main_window_ref.noflash, 'is_running', False):
+                    running_features.append("防闪")
+                if hasattr(self.main_window_ref, 'glow') and self._is_glow_running():
+                    running_features.append("发光")
+                
+                # 更新显示
+                self.update_running_features(running_features)
+            except Exception as e:
+                print(f"更新状态时出错: {e}")
+        
+        # 每秒更新一次
+        self.root.after(1000, self.update_status_loop)
+    
+    def _is_triggerbot_running(self):
+        """检查扳机功能是否实际在运行中（考虑切换模式和按键状态）"""
+        triggerbot = self.main_window_ref.triggerbot
+        if not getattr(triggerbot, 'is_running', False):
+            return False
+        
+        # 检查配置是否启用
+        if not self.main_window_ref.config.get("General", {}).get("Trigger", False):
+            return False
+        
+        # 如果是切换模式，检查toggle_state是否为True
+        if getattr(triggerbot, 'toggle_mode', False):
+            return getattr(triggerbot, 'toggle_state', False)
+        else:
+            # 非切换模式下，检查触发键是否被按下
+            return getattr(triggerbot, 'trigger_active', False) or \
+                   (hasattr(triggerbot, 'is_mouse_trigger') and triggerbot.is_mouse_trigger and triggerbot.check_mouse_pressed())
+    
+    def _is_glow_running(self):
+        """检查发光功能是否实际在运行中（根据配置判断）"""
+        glow = self.main_window_ref.glow
+        if not getattr(glow, 'is_running', False):
+            return False
+        
+        # 检查配置是否启用
+        if not self.main_window_ref.config.get("General", {}).get("Glow", False):
+            return False
+        
+        # 检查具体的发光选项是否启用
+        overlay_config = self.main_window_ref.config.get("Overlay", {})
+        enable_glow = overlay_config.get("enable_glow", False)
+        
+        return enable_glow
+
     def _adjust_window_size(self):
         """根据功能数量动态调整窗口大小"""
         # 计算功能数量
         feature_count = len(self.running_features)
         
         # 设置最小和最大高度
-        min_height = 100  # 增加最小高度，确保即使没有功能或只有一个功能时也显示合理
-        max_height = 500  # 增加最大高度，允许更多功能显示
-        item_height = 30  # 增加每个功能项的高度，使增长更明显
+        min_height = 60  # 最小高度，包括拖动栏（拖动栏30 + 一些边距）
+        max_height = 400  # 最大高度，超过此值需要滚动
+        item_height = 30  # 每个功能项的高度
         drag_bar_height = 30  # 拖动栏高度
         
         # 计算所需高度 (拖动栏 + 功能项)
@@ -253,35 +282,6 @@ class DraggableWindow:
         # 如果窗口位置有效，保持位置不变
         if x > 0 and y > 0:
             self.root.geometry(f"{new_width}x{final_height}+{x}+{y}")
-
-    def update_status_loop(self):
-        """定期更新状态的循环"""
-        if self.main_window_ref:
-            try:
-                # 从主窗口获取当前运行的功能
-                running_features = []
-                
-                # 检查各个功能是否正在运行
-                if hasattr(self.main_window_ref, 'triggerbot') and getattr(self.main_window_ref.triggerbot, 'is_running', False):
-                    running_features.append("扳机")
-                if hasattr(self.main_window_ref, 'aimbot') and getattr(self.main_window_ref.aimbot, 'is_running', False):
-                    running_features.append("自瞄")
-                if hasattr(self.main_window_ref, 'overlay') and getattr(self.main_window_ref.overlay, 'is_running', False):
-                    running_features.append("透视")
-                if hasattr(self.main_window_ref, 'bunnyhop') and getattr(self.main_window_ref.bunnyhop, 'is_running', False):
-                    running_features.append("连跳")
-                if hasattr(self.main_window_ref, 'noflash') and getattr(self.main_window_ref.noflash, 'is_running', False):
-                    running_features.append("防闪")
-                if hasattr(self.main_window_ref, 'glow') and getattr(self.main_window_ref.glow, 'is_running', False):
-                    running_features.append("发光")
-                
-                # 更新显示
-                self.update_running_features(running_features)
-            except Exception as e:
-                print(f"更新状态时出错: {e}")
-        
-        # 每秒更新一次
-        self.root.after(1000, self.update_status_loop)
 
     def show_window(self):
         """显示窗口"""

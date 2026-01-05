@@ -1,5 +1,6 @@
 import customtkinter as ctk
-from classes.config_manager import COLOR_CHOICES, ConfigManager
+
+from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
 from gui.font_manager import *
 
@@ -462,8 +463,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             from_val, to_val, steps = 60, 420, 3
         elif key == "minimap_size":
             from_val, to_val, steps = 100, 500, 40
-        elif key == "glow_thickness":
-            from_val, to_val, steps = 0.5, 5.0, 9
+        elif key == "glow_alpha":  # 修改：从glow_thickness改为glow_alpha
+            from_val, to_val, steps = 0.0, 1.0, 100  # 修改：透明度范围为0.0-1.0
         else:
             from_val, to_val, steps = 0.0, 1.0, 100
             
@@ -547,10 +548,8 @@ def update_slider_value(event, key, main_window):
             formatted_value = f"{value:.0f}"
         elif key == "minimap_size":
             formatted_value = f"{value:.0f}"
-        elif key == "glow_thickness":
-            # 将glow_thickness值(0.5-5.0)转换为百分比形式显示
-            percentage = ((value - 0.5) / (5.0 - 0.5)) * 100
-            formatted_value = f"{percentage:.0f}%"
+        elif key == "glow_alpha":
+            formatted_value = f"{value:.2f}"  # 对于透明度，显示两位小数
         else:
             formatted_value = f"{value:.1f}"
             

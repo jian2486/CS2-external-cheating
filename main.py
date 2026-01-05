@@ -1,13 +1,14 @@
-import sys
-import signal
 import ctypes
 import os
-import psutil
-from classes.logger import Logger
-from classes.config_manager import ConfigManager
-from classes.utility import Utility
+import signal
+import sys
 
+import psutil
+
+from classes.config_manager import ConfigManager
+from classes.logger import Logger
 from gui.main_window import MainWindow
+
 
 def is_admin():
     """检查当前是否以管理员权限运行"""

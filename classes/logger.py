@@ -1,9 +1,10 @@
-import os
-import logging
-import traceback
-import sys
 import inspect
+import logging
+import os
+import sys
+import traceback
 from pathlib import Path
+
 
 class SuppressErrorFilter(logging.Filter):
     def __init__(self, pattern):

@@ -1,11 +1,11 @@
 """视觉设置标签页模块"""
 
 import customtkinter as ctk
-from classes.config_manager import COLOR_CHOICES, ConfigManager
+
+from classes.config_manager import COLOR_CHOICES
 from classes.utility import Utility
 from gui.font_manager import *
 from gui.overlay_settings_tab import save_checkbox_setting, update_slider_value
-from gui.additional_settings_tab import update_slider_value as noflash_update_slider_value
 
 
 def populate_visual_settings(main_window, frame):
@@ -83,7 +83,7 @@ def create_glow_section(main_window, parent):
         ("敌人发光", "checkbox", "enable_glow", "切换敌人发光效果可见性"),
         ("不对尸体发光", "checkbox", "glow_exclude_dead", "切换是否对尸体应用发光效果"),
         ("队友发光", "checkbox", "glow_teammates", "切换是否对队友应用发光效果"),
-        ("发光透明度", "slider", "glow_thickness", "调整发光效果透明度 (0.5-5.0)"),
+        ("发光透明度", "slider", "glow_alpha", "调整发光效果透明度 (0.0-1.0)"),
         ("敌人发光颜色", "combo", "glow_color_hex", "选择敌人发光效果颜色"),
         ("队友发光颜色", "combo", "glow_teammate_color_hex", "选择队友发光效果颜色")
     ]
@@ -247,10 +247,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             value_text = f"{initial_value:.0f}"
         elif key == "minimap_size":
             value_text = f"{initial_value:.0f}"
-        elif key == "glow_thickness":
-            # 将glow_thickness值(0.5-5.0)转换为百分比形式显示
-            percentage = ((initial_value - 0.5) / (5.0 - 0.5)) * 100
-            value_text = f"{percentage:.0f}%"
+        elif key == "glow_alpha":
+            value_text = f"{initial_value:.2f}"
         else:
             value_text = f"{initial_value:.1f}"
             
@@ -269,8 +267,8 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             from_val, to_val, steps = 60, 420, 3
         elif key == "minimap_size":
             from_val, to_val, steps = 100, 500, 40
-        elif key == "glow_thickness":
-            from_val, to_val, steps = 0.5, 5.0, 9
+        elif key == "glow_alpha":
+            from_val, to_val, steps = 0.0, 1.0, 100
         else:
             from_val, to_val, steps = 0.0, 1.0, 100
             

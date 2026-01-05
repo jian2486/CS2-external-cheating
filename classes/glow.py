@@ -1,9 +1,10 @@
+import struct
 import threading
 import time
-import struct
+
 from classes.config_manager import ConfigManager
-from classes.memory_manager import MemoryManager
 from classes.logger import Logger
+from classes.memory_manager import MemoryManager
 
 # 初始化日志记录器，确保一致的日志记录
 logger = Logger.get_logger()
@@ -27,11 +28,11 @@ class CS2Glow:
         self.enable_glow = settings.get('enable_glow', False)
         self.glow_exclude_dead = settings.get('glow_exclude_dead', True)
         self.glow_teammates = settings.get('glow_teammates', False)
-        self.glow_thickness = settings.get('glow_thickness', 1.0)
         self.glow_color_hex = settings.get('glow_color_hex', "#FF00FF")
         self.glow_teammate_color_hex = settings.get('glow_teammate_color_hex', "#00FFFF")
+        self.glow_alpha = settings.get('glow_alpha', 0.5)  # 新增：透明度设置
         
-        # 将十六进制颜色转换为RGBA格式 (0x800000FF)
+        # 将十六进制颜色和透明度转换为RGBA格式
         # 默认为洋红色，带一定透明度
         if self.glow_color_hex.startswith('#'):
             hex_value = self.glow_color_hex[1:]
@@ -39,23 +40,23 @@ class CS2Glow:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用glow_thickness作为alpha值（透明度），范围0.5-5.0映射到0-255
-                alpha = int(min(max((self.glow_thickness - 0.5) / (5.0 - 0.5) * 255, 0), 255))
+                # 使用用户设置的透明度值（0.0-1.0）转换为0-255范围的alpha值
+                alpha = int(self.glow_alpha * 255)
                 self.glow_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_color_rgba = 0x800000FF  # 默认洋红色
         else:
             self.glow_color_rgba = 0x800000FF  # 默认洋红色
             
-        # 将十六进制队友颜色转换为RGBA格式
+        # 将十六进制队友颜色和透明度转换为RGBA格式
         if self.glow_teammate_color_hex.startswith('#'):
             hex_value = self.glow_teammate_color_hex[1:]
             if len(hex_value) == 6:
                 r = int(hex_value[0:2], 16)
                 g = int(hex_value[2:4], 16)
                 b = int(hex_value[4:6], 16)
-                # 使用glow_thickness作为alpha值（透明度），范围0.5-5.0映射到0-255
-                alpha = int(min(max((self.glow_thickness - 0.5) / (5.0 - 0.5) * 255, 0), 255))
+                # 使用用户设置的透明度值（0.0-1.0）转换为0-255范围的alpha值
+                alpha = int(self.glow_alpha * 255)
                 self.glow_teammate_color_rgba = (alpha << 24) | (b << 16) | (g << 8) | r
             else:
                 self.glow_teammate_color_rgba = 0x80FFFF00  # 默认青色

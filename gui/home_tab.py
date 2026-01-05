@@ -1,7 +1,9 @@
-import customtkinter as ctk
 from pathlib import Path
-from classes.logger import Logger
+
+import customtkinter as ctk
+
 from classes.config_manager import ConfigManager
+from classes.logger import Logger
 from gui.font_manager import *
 
 # 缓存日志记录器实例

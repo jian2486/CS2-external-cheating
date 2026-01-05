@@ -1,7 +1,10 @@
-import customtkinter as ctk
 from tkinter import messagebox
+
+import customtkinter as ctk
+
 from classes.config_manager import ConfigManager
 from gui.font_manager import *
+
 
 def populate_general_settings(main_window, frame):
     """

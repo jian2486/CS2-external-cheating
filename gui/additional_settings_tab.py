@@ -1,10 +1,13 @@
-import customtkinter as ctk
 import threading
 import time
+
+import customtkinter as ctk
 import keyboard
+
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
 from gui.font_manager import *
+
 
 def start_bunnyhop_key_detection(main_window):
     """开始检测连跳按键"""

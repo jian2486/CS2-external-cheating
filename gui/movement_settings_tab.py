@@ -1,7 +1,8 @@
 import customtkinter as ctk
-from classes.config_manager import ConfigManager
-from gui.font_manager import *
+
 from gui.additional_settings_tab import create_settings_grid, start_bunnyhop_key_detection
+from gui.font_manager import *
+
 
 def populate_movement_settings(main_window, frame):
     """使用连跳配置选项填充移动设置标签页。"""

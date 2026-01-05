@@ -1,7 +1,9 @@
+import struct
+
+import numpy as np
 import pymem
 import pymem.process
-import struct
-import numpy as np
+
 from classes.logger import Logger
 from classes.utility import Utility
 
@@ -9,7 +11,7 @@ from classes.utility import Utility
 logger = Logger.get_logger()
 
 class MemoryManager:
-    ENTITY_ENTRY_SIZE = 112
+    ENTITY_ENTRY_SIZE = 112 #每个实体占用的空间
 
     def __init__(self, offsets: dict, client_data: dict, buttons_data: dict) -> None:
         """使用偏移量和客户端数据初始化MemoryManager。"""
@@ -346,26 +348,26 @@ class MemoryManager:
         """获取当前装备武器的类型。"""
         try:
             player = self.read_longlong(self.client_base + self.dwLocalPlayerPawn)
-            if not player: return "Rifles"
+            if not player: return "AK47"
 
             weapon_services_ptr = self.read_longlong(player + self.m_pWeaponServices)
-            if not weapon_services_ptr: return "Rifles"
+            if not weapon_services_ptr: return "AK47"
 
             weapon_handle = self.read_longlong(weapon_services_ptr + self.m_hActiveWeapon)
-            if not weapon_handle: return "Rifles"
+            if not weapon_handle: return "AK47"
 
             weapon_id = weapon_handle & 0xFFFF
             list_entry = self.read_longlong(self.ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
-            if not list_entry: return "Rifles"
+            if not list_entry: return "AK47"
 
-            weapon_entity_ptr = self.read_longlong(list_entry + 112 * (weapon_id & 0x1FF))
-            if not weapon_entity_ptr: return "Rifles"
+            weapon_entity_ptr = self.read_longlong(list_entry + self.ENTITY_ENTRY_SIZE + 8 * (weapon_id & 0x1FF))
+            if not weapon_entity_ptr: return "AK47"
 
             attribute_manager_ptr = self.read_longlong(weapon_entity_ptr + self.m_AttributeManager)
-            if not attribute_manager_ptr: return "Rifles"
+            if not attribute_manager_ptr: return "AK47"
 
             item_ptr = self.read_longlong(attribute_manager_ptr + self.m_Item)
-            if not item_ptr: return "Rifles"
+            if not item_ptr: return "AK47"
 
             item_id = self.read_int(item_ptr + self.m_iItemDefinitionIndex)
 
@@ -376,10 +378,10 @@ class MemoryManager:
                 17: "SMGs", 19: "SMGs", 23: "SMGs", 24: "SMGs", 26: "SMGs", 33: "SMGs", 34: "SMGs",
                 14: "Heavy", 25: "Heavy", 27: "Heavy", 28: "Heavy", 35: "Heavy"
             }
-            return weapon_map.get(item_id, "Rifles")
+            return weapon_map.get(item_id, "AK47")
         except Exception as e:
             logger.error(f"获取武器类型时出错: {e}")
-            return "Rifles"
+            return "AK47"
         
     def write_float(self, address: int, value: float) -> None:
         """向内存写入一个浮点数。"""

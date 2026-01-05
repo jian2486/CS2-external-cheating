@@ -1,5 +1,7 @@
-import os, orjson, copy
 from pathlib import Path
+
+import copy
+import orjson
 from pyMeow import get_color, fade_color
 
 from classes.logger import Logger
@@ -128,7 +130,7 @@ class ConfigManager:
             "enable_glow": False,
             "glow_exclude_dead": True,
             "glow_teammates": False,
-            "glow_thickness": 1.0,
+            "glow_alpha": 0.5,
             "glow_color_hex": "#FF00FF",
             "glow_teammate_color_hex": "#00FFFF"
         },
@@ -197,6 +199,20 @@ class ConfigManager:
             elif isinstance(value, dict) and isinstance(current.get(key), dict):
                 if cls._update_config(value, current[key]):
                     updated = True
+
+        # 检查并迁移旧的glow_thickness设置到新的glow_alpha设置
+        # 确保Overlay是字典类型才进行处理
+        if isinstance(current, dict) and "Overlay" in current and isinstance(current["Overlay"], dict):
+            if "glow_thickness" in current["Overlay"] and "glow_alpha" not in current["Overlay"]:
+                # 使用默认透明度值，因为旧的thickness参数与新的alpha参数意义不同
+                current["Overlay"]["glow_alpha"] = 0.5  # 默认透明度值
+                updated = True
+
+            # 如果有glow_thickness配置项，移除它（因为已不再使用）
+            if "glow_thickness" in current["Overlay"]:
+                del current["Overlay"]["glow_thickness"]
+                updated = True
+
         return updated
 
     @classmethod
