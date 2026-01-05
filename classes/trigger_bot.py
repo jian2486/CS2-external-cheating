@@ -144,8 +144,19 @@ class CS2TriggerBot:
         teams_valid = (entity_team in valid_team_ids) and (player_team in valid_team_ids)
         
         result = teams_valid and (self.attack_on_teammates or entity_team != player_team) and entity_health > 0
-        # 已移除调试日志
+
         return result
+
+    def is_active(self) -> bool:
+        """检查TriggerBot是否处于激活状态（仅在切换模式下有意义）"""
+        if self.toggle_mode:
+            return self.toggle_state
+        else:
+            # 在非切换模式下，如果按键被按下则认为是激活的
+            if self.is_mouse_trigger:
+                return self.trigger_active
+            else:
+                return keyboard.is_pressed(self.trigger_key)
 
     def start(self) -> None:
         """启动TriggerBot。"""
@@ -175,20 +186,14 @@ class CS2TriggerBot:
                         is_key_pressed = self.trigger_active
                     else:
                         is_key_pressed = keyboard.is_pressed(self.trigger_key)
-                
-                # 已移除调试日志
+
 
                 if not self.toggle_mode and not is_key_pressed:
                     sleep(MAIN_LOOP_SLEEP)
                     continue
 
                 data = self.memory_manager.get_fire_logic_data()
-                # 已移除调试日志
-                
-                # 临时日志：输出当前检测到的武器
-                if data and "weapon_type" in data:
-                    weapon_type = data.get("weapon_type", "Unknown")
-                    logger.info(f"当前检测到的武器: {weapon_type}")
+
                 
                 # 修改条件判断，确保data存在且有效
                 if data and "entity_team" in data and "player_team" in data and "entity_health" in data:
