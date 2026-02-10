@@ -264,7 +264,7 @@ class MainWindow:
         # 更新偏移量按钮
         self.update_offsets_button = ctk.CTkButton(
             update_frame,
-            text="更新偏移量",
+            text="网络更新偏移量",
             command=self.update_offsets,
             font=(MAIN_FONT, SETTING_LABEL_FONT_SIZE, "bold"),
             corner_radius=0,
@@ -277,7 +277,7 @@ class MainWindow:
         # 上次更新时间标签
         self.last_update_label = ctk.CTkLabel(
             update_frame,
-            text=f"上次更新: {last_update_text}",
+            text=f"上次cs更新: {last_update_text}",
             font=(SECONDARY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
             text_color=("#64748b", "#94a3b8")
         )

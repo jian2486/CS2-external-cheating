@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import customtkinter as ctk
 
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
+from classes.cs2_detector import CS2Detector
 from gui.font_manager import *
 
 # 缓存日志记录器实例
@@ -98,23 +97,17 @@ def populate_dashboard(main_window, frame):
     update_frame = ctk.CTkFrame(buttons_container, fg_color="transparent")
     update_frame.pack(fill="x", pady=(0, 10))
     
-    # 检查output目录中offsets文件的最后修改时间
-    last_update_text = "从未"
-    try:
-        import datetime as dt
-        offsets_dir = Path("CS2-external-cheating/Offsets")
-        offsets_file = offsets_dir / "offsets.json"
-        if offsets_file.exists():
-            mtime = offsets_file.stat().st_mtime
-            last_update = dt.datetime.fromtimestamp(mtime)
-            last_update_text = last_update.strftime("%Y-%m-%d %H:%M")
-    except Exception as e:
-        logger.warning(f"获取偏移量文件更新时间失败: {e}")
+    # 获取CS2完整版本信息
+    cs2_version_info = CS2Detector.get_cs2_version_info()
+    if cs2_version_info:
+        last_update_text = cs2_version_info
+    else:
+        last_update_text = "获取失败"
 
     # 更新偏移量按钮
     main_window.update_offsets_button = ctk.CTkButton(
         update_frame,
-        text="更新偏移量",
+        text="网络更新偏移量",
         command=main_window.update_offsets,
         height=40,
         corner_radius=0,
@@ -127,7 +120,7 @@ def populate_dashboard(main_window, frame):
     # 上次更新时间标签
     main_window.last_update_label = ctk.CTkLabel(
         update_frame,
-        text="上次更新:",
+        text="上次CS更新:",
         font=(THIRDLY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
         text_color=("#64748b", "#94a3b8")
     )
