@@ -472,15 +472,17 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         main_window.__setattr__(f"{key}_var", var)
 
 def toggle_anti_screenshot(main_window, enabled):
-    """切换防截屏功能"""
+    """切换防截屏功能
+    同时修改配置文件和实际功能状态"""
     try:
-        # 更新配置
+        # 同时更新配置和功能状态
         main_window.config["General"]["AntiScreenshot"] = enabled
         main_window.save_settings(show_message=False)
         
         # 通知affinity manager更新状态
         if hasattr(main_window, 'affinity_manager'):
             main_window.affinity_manager.set_anti_screenshot_enabled(enabled)
+            logger = Logger.get_logger()
     except Exception as e:
         logger = Logger.get_logger()
         logger.error(f"切换防截屏功能时出错: {e}")

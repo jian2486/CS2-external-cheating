@@ -24,9 +24,9 @@ class Logger:
     # 定义存储日志的目录。
     LOG_DIRECTORY = Path("CS2-external-cheating/crashes").resolve()
     # 定义LOG_DIRECTORY中日志文件的完整路径。
-    LOG_FILE = LOG_DIRECTORY / 'vw_logs.log'
+    LOG_FILE = LOG_DIRECTORY / 'logs.log'
     # 定义LOG_DIRECTORY中详细日志文件的完整路径。
-    DETAILED_LOG_FILE = LOG_DIRECTORY / 'vw_detailed_logs.log'
+    DETAILED_LOG_FILE = LOG_DIRECTORY / 'debug_logs.log'
     
     # 日志记录器实例的缓存。
     _logger = None

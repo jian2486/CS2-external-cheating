@@ -176,10 +176,11 @@ class DisplayAffinityManager:
             return 0
             
     def _affinity_worker(self):
-        """反截屏管理线程的工作函数"""
+        """反截屏管理线程的工作函数
+        程序启动后只在必要时进行维护操作"""
         while self.affinity_thread_running:
             try:
-                # 只有在防截屏功能启用时才执行操作
+                # 只有在防截屏功能启用时才执行维护操作
                 if self.anti_screenshot_enabled:
                     if self.target_hwnd and self.target_affinity is not None:
                         # 为特定窗口设置亲和力
@@ -187,17 +188,17 @@ class DisplayAffinityManager:
                         # 清除目标，避免重复设置
                         self.clear_target_window_affinity()
                     elif self.target_affinity is not None:
-                        # 为当前进程的所有窗口设置亲和力
+                        # 为当前进程的所有窗口设置亲和力（维护操作）
                         self.apply_affinity_to_process_windows(self.current_process_id, self.target_affinity)
                         # 清除目标亲和力值以避免重复应用
                         self.target_affinity = None
                         
-                # 线程休眠一段时间以避免过度占用CPU
-                time.sleep(2.0)
+                # 线程休眠较长时间以减少资源占用
+                time.sleep(5.0)  # 增加到5秒，减少CPU占用
                 
             except Exception as e:
                 logger.error(f"反截屏管理线程发生异常: {e}")
-                time.sleep(1)  # 出错时等待更长时间
+                time.sleep(2)  # 出错时等待更长时间
         
     def start_affinity_thread(self):
         """启动显示亲和力管理线程"""
@@ -235,6 +236,7 @@ class DisplayAffinityManager:
     def set_anti_screenshot_enabled(self, enabled):
         """
         设置防截屏功能开关状态
+        用户开关操作时同时修改配置和实际功能状态
         
         Args:
             enabled: 是否启用防截屏功能

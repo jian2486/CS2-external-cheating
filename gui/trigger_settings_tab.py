@@ -137,16 +137,6 @@ def populate_trigger_settings(main_window, frame):
     )
     trigger_key_section.pack(fill="x", pady=(0, 30))
 
-    # 创建具有现代样式的武器设置部分
-    weapon_section = ctk.CTkFrame(
-        settings,
-        corner_radius=0,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
-    weapon_section.pack(fill="x", pady=(0, 30))
-
     # 创建具有现代样式的延迟设置部分
     delay_section = ctk.CTkFrame(
         settings,
@@ -202,64 +192,10 @@ def populate_trigger_settings(main_window, frame):
     # 绑定点击事件开始按键检测
     main_window.trigger_key_entry.bind("<Button-1>", lambda e: start_key_detection(main_window))
 
-    # 创建武器设置
-    header_frame2 = ctk.CTkFrame(weapon_section, fg_color="transparent")
-    header_frame2.pack(fill="x", padx=40, pady=(40, 30))
-    header_frame2.grid_columnconfigure(0, weight=1)
-    header_frame2.grid_columnconfigure(1, weight=1)
+    # 创建切换模式和其他设置框架
+    toggle_frame = ctk.CTkFrame(trigger_key_section, fg_color="transparent")
+    toggle_frame.pack(fill="x", padx=40, pady=(0, 40))
     
-    ctk.CTkLabel(
-        header_frame2,
-        text="武器设置",
-        font=(MAIN_FONT, SECTION_TITLE_FONT_SIZE, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).grid(row=0, column=0, sticky="w")
-
-    ctk.CTkLabel(
-        header_frame2,
-        text="配置武器类型和模式",
-        font=(SECONDARY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).grid(row=0, column=1, sticky="e")
-
-    # 创建武器设置网格（改为3个一排）
-    weapon_settings_frame = ctk.CTkFrame(weapon_section, fg_color="transparent")
-    weapon_settings_frame.pack(fill="x", padx=40, pady=(0, 40))
-
-    # 创建居中框架，增加更多内边距避免遮挡大框
-    center_frame = ctk.CTkFrame(weapon_settings_frame, fg_color="transparent")
-    center_frame.pack(fill="x", pady=5)
-
-    # 使用网格布局确保三个控件垂直对齐居中
-    main_window.active_weapon_type = ctk.StringVar(
-        value=main_window.triggerbot.config['Trigger'].get('active_weapon_type', 'AK47'))
-    
-    # 武器类型选择
-    ctk.CTkLabel(
-        center_frame,
-        text="武器类型:",
-        font=(MAIN_FONT, SETTING_LABEL_FONT_SIZE),
-        text_color=("#1f2937", "#ffffff")
-    ).grid(row=0, column=0, padx=(0, 30), sticky="w")
-
-    weapon_dropdown = ctk.CTkOptionMenu(
-        center_frame,
-        variable=main_window.active_weapon_type,
-        values=WEAPON_TYPES,
-        command=lambda e: main_window.update_weapon_settings_display(),
-        font=(MAIN_FONT, INPUT_FONT_SIZE),
-        dropdown_font=(MAIN_FONT, INPUT_FONT_SIZE),
-        corner_radius=0,
-        fg_color=("#D5006D", "#E91E63"),
-        button_color=("#B8004A", "#C2185B"),
-        button_hover_color=("#9F003D", "#A6144E"),
-        width=150,
-        height=30
-    )
-    weapon_dropdown.grid(row=0, column=1, padx=(0, 30), pady=(0, 0), sticky="w")
-
     main_window.toggle_mode_var = ctk.BooleanVar(
         value=main_window.triggerbot.config['Trigger'].get('ToggleMode', False))
     main_window.attack_teammates_var = ctk.BooleanVar(
@@ -271,7 +207,7 @@ def populate_trigger_settings(main_window, frame):
 
     # 切换模式
     toggle_mode_checkbox = ctk.CTkCheckBox(
-        center_frame,
+        toggle_frame,
         text="切换模式",
         variable=main_window.toggle_mode_var,
         width=25,
@@ -284,11 +220,11 @@ def populate_trigger_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    toggle_mode_checkbox.grid(row=0, column=2, padx=(0, 30), pady=(0, 0), sticky="w")
+    toggle_mode_checkbox.pack(side="left", padx=(0, 30))
 
     # 攻击队友
     attack_teammates_checkbox = ctk.CTkCheckBox(
-        center_frame,
+        toggle_frame,
         text="攻击队友",
         variable=main_window.attack_teammates_var,
         width=25,
@@ -301,11 +237,11 @@ def populate_trigger_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    attack_teammates_checkbox.grid(row=0, column=3, padx=(0, 30), pady=(0, 0), sticky="w")
+    attack_teammates_checkbox.pack(side="left", padx=(0, 30))
     
     # 内存射击模式
     memory_shoot_checkbox = ctk.CTkCheckBox(
-        center_frame,
+        toggle_frame,
         text="内存射击",
         variable=main_window.memory_shoot_var,
         width=25,
@@ -318,7 +254,7 @@ def populate_trigger_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    memory_shoot_checkbox.grid(row=0, column=4, padx=(0, 0), pady=(0, 0), sticky="w")
+    memory_shoot_checkbox.pack(side="left", padx=(0, 0))
 
     # 创建延迟设置
     header_frame3 = ctk.CTkFrame(delay_section, fg_color="transparent")
@@ -479,5 +415,3 @@ def populate_trigger_settings(main_window, frame):
     delay_inputs_frame.grid_columnconfigure(0, weight=1)
     delay_inputs_frame.grid_columnconfigure(1, weight=1)
     delay_inputs_frame.grid_columnconfigure(2, weight=1)
-
-    main_window.update_weapon_settings_display()

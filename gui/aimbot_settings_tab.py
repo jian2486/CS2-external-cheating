@@ -139,17 +139,7 @@ def populate_aimbot_settings(main_window, frame):
     )
     aim_key_section.pack(fill="x", pady=(0, 30))
 
-    # 创建具有现代样式的武器设置部分
-    weapon_section = ctk.CTkFrame(
-        settings,
-        corner_radius=0,
-        fg_color=("#ffffff", "#1a1b23"),
-        border_width=2,
-        border_color=("#e2e8f0", "#2d3748")
-    )
-    weapon_section.pack(fill="x", pady=(0, 30))
-
-    # 创建具有现代样式的延迟设置部分
+    # 创建具有现代样式的FOV设置部分
     fov_section = ctk.CTkFrame(
         settings,
         corner_radius=0,
@@ -204,63 +194,9 @@ def populate_aimbot_settings(main_window, frame):
     # 绑定点击事件开始按键检测
     main_window.aim_key_entry.bind("<Button-1>", lambda e: start_key_detection(main_window))
 
-    # 创建武器设置
-    header_frame2 = ctk.CTkFrame(weapon_section, fg_color="transparent")
-    header_frame2.pack(fill="x", padx=40, pady=(40, 30))
-    header_frame2.grid_columnconfigure(0, weight=1)
-    header_frame2.grid_columnconfigure(1, weight=1)
-    
-    ctk.CTkLabel(
-        header_frame2,
-        text="武器设置",
-        font=(MAIN_FONT, SECTION_TITLE_FONT_SIZE, "bold"),
-        text_color=("#1f2937", "#ffffff"),
-        anchor="w"
-    ).grid(row=0, column=0, sticky="w")
-
-    ctk.CTkLabel(
-        header_frame2,
-        text="配置武器类型和模式",
-        font=(SECONDARY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
-        text_color=("#64748b", "#94a3b8"),
-        anchor="e"
-    ).grid(row=0, column=1, sticky="e")
-
-    # 创建武器设置网格（改为3个一排）
-    weapon_settings_frame = ctk.CTkFrame(weapon_section, fg_color="transparent")
-    weapon_settings_frame.pack(fill="x", padx=40, pady=(0, 40))
-
-    # 创建居中框架，增加更多内边距避免遮挡大框
-    center_frame = ctk.CTkFrame(weapon_settings_frame, fg_color="transparent")
-    center_frame.pack(fill="x", pady=5)
-
-    # 使用网格布局确保三个控件垂直对齐居中
-    main_window.active_aimbot_weapon_type = ctk.StringVar(
-        value=main_window.aimbot.config['Aimbot'].get('active_weapon_type', 'AK47'))
-    
-    # 武器类型选择
-    ctk.CTkLabel(
-        center_frame,
-        text="武器类型:",
-        font=(MAIN_FONT, SETTING_LABEL_FONT_SIZE),
-        text_color=("#1f2937", "#ffffff")
-    ).grid(row=0, column=0, padx=(0, 30), sticky="w")
-
-    weapon_dropdown = ctk.CTkOptionMenu(
-        center_frame,
-        variable=main_window.active_aimbot_weapon_type,
-        values=WEAPON_TYPES,
-        command=lambda e: main_window.update_aimbot_weapon_settings_display(),
-        font=(MAIN_FONT, INPUT_FONT_SIZE),
-        dropdown_font=(MAIN_FONT, INPUT_FONT_SIZE),
-        corner_radius=0,
-        fg_color=("#D5006D", "#E91E63"),
-        button_color=("#B8004A", "#C2185B"),
-        button_hover_color=("#9F003D", "#A6144E"),
-        width=150,
-        height=30
-    )
-    weapon_dropdown.grid(row=0, column=1, padx=(0, 30), pady=(0, 0), sticky="w")
+    # 创建切换模式和攻击队友复选框
+    toggle_attack_frame = ctk.CTkFrame(aim_key_section, fg_color="transparent")
+    toggle_attack_frame.pack(fill="x", padx=40, pady=(0, 40))
 
     main_window.aimbot_toggle_mode_var = ctk.BooleanVar(
         value=main_window.aimbot.config['Aimbot'].get('ToggleMode', False))
@@ -269,7 +205,7 @@ def populate_aimbot_settings(main_window, frame):
 
     # 切换模式
     toggle_mode_checkbox = ctk.CTkCheckBox(
-        center_frame,
+        toggle_attack_frame,
         text="切换模式",
         variable=main_window.aimbot_toggle_mode_var,
         width=25,
@@ -282,11 +218,11 @@ def populate_aimbot_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    toggle_mode_checkbox.grid(row=0, column=2, padx=(0, 30), pady=(0, 0), sticky="w")
+    toggle_mode_checkbox.pack(side="left", padx=(0, 30))
 
     # 攻击队友
     attack_teammates_checkbox = ctk.CTkCheckBox(
-        center_frame,
+        toggle_attack_frame,
         text="攻击队友",
         variable=main_window.aimbot_attack_teammates_var,
         width=25,
@@ -299,7 +235,7 @@ def populate_aimbot_settings(main_window, frame):
         command=main_window.save_settings,
         font=(MAIN_FONT, INPUT_FONT_SIZE)
     )
-    attack_teammates_checkbox.grid(row=0, column=3, padx=(0, 0), pady=(0, 0), sticky="w")
+    attack_teammates_checkbox.pack(side="left")
 
     # 创建视野设置
     header_frame3 = ctk.CTkFrame(fov_section, fg_color="transparent")
@@ -317,13 +253,13 @@ def populate_aimbot_settings(main_window, frame):
 
     ctk.CTkLabel(
         header_frame3,
-        text="为每种武器类型配置视野和灵敏度",
+        text="配置视野范围和瞄准平滑度",
         font=(SECONDARY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
         text_color=("#64748b", "#94a3b8"),
         anchor="e"
     ).grid(row=0, column=1, sticky="e")
 
-    # 创建FOV设置网格（改为每行2个）
+    # 创建视野设置网格（改为每行2个）
     fov_settings_frame = ctk.CTkFrame(fov_section, fg_color="transparent")
     fov_settings_frame.pack(fill="x", padx=40, pady=(0, 40))
 
@@ -331,8 +267,29 @@ def populate_aimbot_settings(main_window, frame):
     fov_inputs_frame = ctk.CTkFrame(fov_settings_frame, fg_color="transparent")
     fov_inputs_frame.pack(fill="x", pady=5)
 
+    # 瞄准位置选择
+    ctk.CTkLabel(fov_inputs_frame, text="瞄准位置", font=(MAIN_FONT, INPUT_FONT_SIZE)).grid(row=0, column=0, padx=(0, 15),
+                                                                                 pady=(0, 5), sticky="w")
+    main_window.aim_position_var = ctk.StringVar(
+        value=main_window.aimbot.config['Aimbot'].get('AimPosition', 'head'))
+    aim_position_menu = ctk.CTkComboBox(
+        fov_inputs_frame,
+        values=["头部", "脖子", "胸部", "根部"],
+        variable=main_window.aim_position_var,
+        width=120,
+        height=30,
+        corner_radius=0,
+        border_width=2,
+        border_color=("#d1d5db", "#374151"),
+        fg_color=("#ffffff", "#1f2937"),
+        text_color=("#1f2937", "#ffffff"),
+        font=(MAIN_FONT, INPUT_FONT_SIZE),
+        command=lambda e: main_window.save_settings()
+    )
+    aim_position_menu.grid(row=1, column=0, padx=(0, 15), pady=(0, 15), sticky="w")
+
     # 视野输入框
-    ctk.CTkLabel(fov_inputs_frame, text="视野 (FOV)", font=(MAIN_FONT, INPUT_FONT_SIZE)).grid(row=0, column=0, padx=(0, 15),
+    ctk.CTkLabel(fov_inputs_frame, text="视野 (FOV)", font=(MAIN_FONT, INPUT_FONT_SIZE)).grid(row=0, column=1, padx=(15, 0),
                                                                                  pady=(0, 5), sticky="w")
     main_window.fov_entry = ctk.CTkEntry(
         fov_inputs_frame,
@@ -348,10 +305,10 @@ def populate_aimbot_settings(main_window, frame):
     )
     main_window.fov_entry.bind("<FocusOut>", lambda e: main_window.save_settings())
     main_window.fov_entry.bind("<Return>", lambda e: main_window.save_settings())
-    main_window.fov_entry.grid(row=1, column=0, padx=(0, 15), pady=(0, 15), sticky="w")
+    main_window.fov_entry.grid(row=1, column=1, padx=(15, 0), pady=(0, 15), sticky="w")
 
     # 平滑度输入框
-    ctk.CTkLabel(fov_inputs_frame, text="平滑度", font=(MAIN_FONT, INPUT_FONT_SIZE)).grid(row=0, column=1, padx=(15, 0),
+    ctk.CTkLabel(fov_inputs_frame, text="平滑度", font=(MAIN_FONT, INPUT_FONT_SIZE)).grid(row=0, column=2, padx=(15, 0),
                                                                                    pady=(0, 5), sticky="w")
     main_window.smooth_entry = ctk.CTkEntry(
         fov_inputs_frame,
@@ -367,9 +324,11 @@ def populate_aimbot_settings(main_window, frame):
     )
     main_window.smooth_entry.bind("<FocusOut>", lambda e: main_window.save_settings())
     main_window.smooth_entry.bind("<Return>", lambda e: main_window.save_settings())
-    main_window.smooth_entry.grid(row=1, column=1, padx=(15, 0), pady=(0, 15), sticky="w")
+    main_window.smooth_entry.grid(row=1, column=2, padx=(15, 0), pady=(0, 15), sticky="w")
 
     fov_inputs_frame.grid_columnconfigure(0, weight=1)
     fov_inputs_frame.grid_columnconfigure(1, weight=1)
+    fov_inputs_frame.grid_columnconfigure(2, weight=1)
 
+    # 初始化显示固定配置值
     main_window.update_aimbot_weapon_settings_display()

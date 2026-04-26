@@ -14,7 +14,7 @@ class DraggableWindow:
         self.main_window_ref = main_window_ref
         self.root = tk.Tk()
         self.root.title("功能状态")
-        self.root.geometry("300x200")
+        self.root.geometry("300x300")
         self.root.configure(bg='#2d2d2d')
         
         # 设置无边框窗口
@@ -217,8 +217,8 @@ class DraggableWindow:
             except Exception as e:
                 print(f"更新状态时出错: {e}")
         
-        # 每秒更新一次
-        self.root.after(1000, self.update_status_loop)
+        # 每300毫秒更新一次
+        self.root.after(300, self.update_status_loop)
     
     def _is_triggerbot_running(self):
         """检查扳机功能是否实际在运行中（考虑切换模式和按键状态）"""
@@ -262,8 +262,8 @@ class DraggableWindow:
         # 设置最小和最大高度
         min_height = 60  # 最小高度，包括拖动栏（拖动栏30 + 一些边距）
         max_height = 400  # 最大高度，超过此值需要滚动
-        item_height = 30  # 每个功能项的高度
-        drag_bar_height = 30  # 拖动栏高度
+        item_height = 34  # 每个功能项的高度
+        drag_bar_height = 25  # 拖动栏高度
         
         # 计算所需高度 (拖动栏 + 功能项)
         calculated_height = drag_bar_height + (feature_count * item_height)

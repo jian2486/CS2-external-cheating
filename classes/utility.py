@@ -1,5 +1,8 @@
 import os
 import sys
+import subprocess
+import shutil
+import zipfile
 
 import orjson
 import psutil
@@ -13,7 +16,39 @@ from pathlib import Path
 
 class Utility:
     @staticmethod
-    def download_offsets():
+    def download_file_with_progress(url, file_path, progress_callback=None):
+        """
+        带进度显示的文件下载函数
+        """
+        # 延迟导入 Logger 以避免循环导入
+        from classes.logger import Logger
+        logger = Logger.get_logger()
+        
+        try:
+            response = requests.get(url, timeout=30, verify=False, stream=True)
+            response.raise_for_status()
+            
+            total_size = int(response.headers.get('content-length', 0))
+            downloaded_size = 0
+            
+            with open(file_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded_size += len(chunk)
+                        
+                        # 更新进度
+                        if total_size > 0 and progress_callback:
+                            progress = int((downloaded_size / total_size) * 100)
+                            progress_callback(progress)
+            
+            return True
+        except Exception as e:
+            logger.error(f"下载文件失败 {file_path}: {e}")
+            return False
+    
+    @staticmethod
+    def download_offsets(progress_callback=None):
         """
         从GitHub下载偏移量文件到Offsets目录
         """
@@ -33,16 +68,21 @@ class Utility:
         }
         
         success = True
-        for filename, url in files_to_download.items():
+        for i, (filename, url) in enumerate(files_to_download.items(), 1):
             try:
-                logger.info(f"正在下载 {filename}...")
-                # 添加超时和SSL验证参数
-                response = requests.get(url, timeout=30, verify=False)
-                response.raise_for_status()
+                logger.info(f"正在下载 {filename} ({i}/{len(files_to_download)})...")
+                
+                # 创建局部进度回调函数
+                def file_progress_callback(progress):
+                    if progress_callback:
+                        # 计算整体进度：当前文件进度 * (1/总文件数) + 已完成文件数/总文件数
+                        overall_progress = int((i - 1) * (100 / len(files_to_download)) + progress / len(files_to_download))
+                        progress_callback(overall_progress)
                 
                 file_path = offsets_dir / filename
-                with open(file_path, 'wb') as f:
-                    f.write(response.content)
+                if not Utility.download_file_with_progress(url, file_path, file_progress_callback):
+                    success = False
+                    continue
                     
                 logger.info(f"成功下载 {filename}")
             except Exception as e:
@@ -50,6 +90,120 @@ class Utility:
                 success = False
                 
         return success
+
+    @staticmethod
+    def offline_update_offsets(progress_callback=None):
+        """
+        离线更新偏移量：检查版本后下载最新版cs2-dumper.exe并运行生成偏移量文件
+        """
+        # 延迟导入 Logger 以避免循环导入
+        from classes.logger import Logger
+        logger = Logger.get_logger()
+        
+        try:
+            # 确保目录存在
+            base_dir = Path("CS2-external-cheating")
+            offsets_dir = base_dir / "Offsets"
+            offsets_dir.mkdir(parents=True, exist_ok=True)
+            
+            logger.info("开始离线更新偏移量...")
+            
+            # 1. 获取最新的release版本
+            release_url = "https://api.github.com/repos/a2x/cs2-dumper/releases/latest"
+            response = requests.get(release_url, timeout=30, verify=False)
+            response.raise_for_status()
+            release_data = response.json()
+            
+            # 获取最新版本的tag
+            latest_tag = release_data["tag_name"]
+            logger.info(f"最新版本: {latest_tag}")
+            
+            # 2. 检查本地是否已有相同版本的dumper
+            dumper_exe = base_dir / "cs2-dumper.exe"
+            version_file = base_dir / "dumper_version.txt"
+            
+            need_download = True
+            if dumper_exe.exists() and version_file.exists():
+                try:
+                    with open(version_file, 'r') as f:
+                        local_version = f.read().strip()
+                    if local_version == latest_tag:
+                        logger.info("本地dumper版本已是最新，跳过下载")
+                        need_download = False
+                    else:
+                        logger.info(f"本地版本 {local_version} != 最新版本 {latest_tag}，需要更新")
+                except Exception as e:
+                    logger.warning(f"读取本地版本信息失败: {e}，重新下载")
+            
+            # 3. 如需要则下载cs2-dumper.exe
+            if need_download:
+                download_url = f"https://github.com/a2x/cs2-dumper/releases/download/{latest_tag}/cs2-dumper.exe"
+                logger.info("正在下载cs2-dumper.exe...")
+                
+                # 下载dumper exe文件并显示进度
+                def dumper_progress_callback(progress):
+                    if progress_callback:
+                        # dumper下载占总体进度的70%
+                        overall_progress = int(progress * 0.7)
+                        progress_callback(overall_progress)
+                
+                if not Utility.download_file_with_progress(download_url, dumper_exe, dumper_progress_callback):
+                    logger.error("下载cs2-dumper.exe失败")
+                    return False
+                
+                # 保存版本信息
+                with open(version_file, 'w') as f:
+                    f.write(latest_tag)
+                
+                logger.info("cs2-dumper.exe下载完成")
+            
+            # 4. 运行cs2-dumper.exe (占总体进度的20%)
+            logger.info("正在运行cs2-dumper.exe生成偏移量...")
+            if progress_callback:
+                progress_callback(70)  # 运行阶段开始于70%
+            
+            result = subprocess.run([str(dumper_exe)], cwd=base_dir, capture_output=True, text=True, timeout=300)
+            
+            if result.returncode != 0:
+                logger.error(f"cs2-dumper运行失败: {result.stderr}")
+                return False
+            
+            logger.info("cs2-dumper运行完成")
+            if progress_callback:
+                progress_callback(90)  # 运行完成后90%
+            
+            # 5. 复制生成的偏移量文件并立即清理output目录
+            output_dir = base_dir / "output"
+            if not output_dir.exists():
+                logger.error("未找到output目录")
+                return False
+            
+            required_files = ["offsets.json", "client_dll.json", "buttons.json"]
+            for filename in required_files:
+                source_file = output_dir / filename
+                dest_file = offsets_dir / filename
+                
+                if source_file.exists():
+                    shutil.copy2(source_file, dest_file)
+                    logger.info(f"已复制 {filename}")
+                else:
+                    logger.error(f"缺少文件: {filename}")
+                    return False
+            
+            # 立即清理output目录，避免文件监视器访问
+            if output_dir.exists():
+                shutil.rmtree(output_dir)
+                logger.info("已清理output目录")
+            
+            if progress_callback:
+                progress_callback(100)  # 完成100%
+            
+            logger.info("离线更新偏移量完成")
+            return True
+            
+        except Exception as e:
+            logger.error(f"离线更新偏移量失败: {e}")
+            return False
 
     @staticmethod
     def fetch_offsets():
@@ -169,19 +323,25 @@ class Utility:
 
             def get_field(class_name, field_name):
                 """递归搜索类及其父类中的字段。"""
-                class_info = classes.get(class_name)
-                if not class_info:
-                    raise KeyError(f"类 '{class_name}' 未找到")
+                try:
+                    class_info = classes.get(class_name)
+                    if not class_info:
+                        logger.warning(f"类 '{class_name}' 未找到")
+                        return None
 
-                field = class_info.get("fields", {}).get(field_name)
-                if field is not None:
-                    return field
-                
-                parent_class_name = class_info.get("parent")
-                if parent_class_name:
-                    return get_field(parent_class_name, field_name)
+                    field = class_info.get("fields", {}).get(field_name)
+                    if field is not None:
+                        return field
                     
-                raise KeyError(f"在 '{class_name}' 或其父类中未找到 '{field_name}'")
+                    parent_class_name = class_info.get("parent")
+                    if parent_class_name:
+                        return get_field(parent_class_name, field_name)
+                        
+                    logger.warning(f"在 '{class_name}' 或其父类中未找到 '{field_name}'")
+                    return None
+                except Exception as e:
+                    logger.warning(f"获取字段 {field_name} 时出错: {e}")
+                    return None
 
             extracted_offsets = {
                 "dwEntityList": client.get("dwEntityList"),
@@ -199,10 +359,10 @@ class Utility:
                 "m_pGameSceneNode": get_field("C_BaseEntity", "m_pGameSceneNode"),
                 "m_vOldOrigin": get_field("C_BasePlayerPawn", "m_vOldOrigin"),
                 "m_vecAbsOrigin": get_field("CGameSceneNode", "m_vecAbsOrigin"),
+                "m_vecAbsOrigin": get_field("CGameSceneNode", "m_vecAbsOrigin"),
                 "m_pWeaponServices": get_field("C_BasePlayerPawn", "m_pWeaponServices"),
                 "m_iIDEntIndex": get_field("C_CSPlayerPawn", "m_iIDEntIndex"),
                 "m_flFlashDuration": get_field("C_CSPlayerPawnBase", "m_flFlashDuration"),
-                "m_pClippingWeapon": get_field("C_CSPlayerPawn", "m_pClippingWeapon"),
                 "m_hPlayerPawn": get_field("CCSPlayerController", "m_hPlayerPawn"),
                 "m_iszPlayerName": get_field("CBasePlayerController", "m_iszPlayerName"),
                 "m_hActiveWeapon": get_field("CPlayer_WeaponServices", "m_hActiveWeapon"),
@@ -210,18 +370,24 @@ class Utility:
                 "m_AttributeManager": get_field("C_EconEntity", "m_AttributeManager"),
                 "m_Item": get_field("C_AttributeContainer", "m_Item"),
                 "m_iItemDefinitionIndex": get_field("C_EconItemView", "m_iItemDefinitionIndex"),
-                "m_pBoneArray": 528
+                # m_pBoneArray = CSkeletonInstance::m_modelState + 0x80
+                "m_pBoneArray": (get_field("CSkeletonInstance", "m_modelState") or 0) + 0x80,
+                # dwViewAngles 是固定偏移量，可能需要根据游戏版本更新
+                "dwViewAngles": client.get("dwViewAngles", 0x19A6E8)  # 默认值，如果JSON中没有则使用硬编码
             }
 
+            # 记录缺失的偏移量但不阻止加载
             missing_keys = [k for k, v in extracted_offsets.items() if v is None]
             if missing_keys:
-                logger.error(f"偏移量初始化错误: 缺少顶级键 {missing_keys}")
-                return None
+                logger.warning(f"部分偏移量未能加载: {missing_keys}")
+                logger.info("将继续使用可用的偏移量")
+            else:
+                logger.info("所有偏移量加载成功")
 
             return extracted_offsets
 
-        except KeyError as e:
-            logger.error(f"偏移量初始化错误: 缺少键 {e}")
+        except Exception as e:
+            logger.error(f"偏移量初始化出现严重错误: {e}")
             return None
         
     @staticmethod
@@ -317,3 +483,57 @@ class Utility:
             "f11": 0x7A, "f12": 0x7B
         }
         return vk_codes.get(key, 0x20)  # 默认为空格键
+    
+    @staticmethod
+    def world_to_screen(view_matrix, world_pos, screen_width, screen_height):
+        """
+        将3D世界坐标转换为2D屏幕坐标
+        :param view_matrix: 4x4视图矩阵（16个float的列表）
+        :param world_pos: 世界坐标 {x, y, z}
+        :param screen_width: 屏幕宽度
+        :param screen_height: 屏幕高度
+        :return: 屏幕坐标 {x, y} 或 None（如果在屏幕外）
+        """
+        import numpy as np
+        
+        try:
+            # 构建视图矩阵
+            matrix = np.array(view_matrix).reshape(4, 4)
+            
+            # 世界坐标转齐次坐标
+            world_vec = np.array([world_pos['x'], world_pos['y'], world_pos['z'], 1.0])
+            
+            # 矩阵变换
+            clip_coords = matrix.dot(world_vec)
+            
+            # 检查点在摄像机后面
+            if clip_coords[3] < 0.1:
+                return None
+            
+            # 透视除法
+            ndc_x = clip_coords[0] / clip_coords[3]
+            ndc_y = clip_coords[1] / clip_coords[3]
+            
+            # 转换到屏幕坐标
+            screen_x = (screen_width / 2) * (1 + ndc_x)
+            screen_y = (screen_height / 2) * (1 - ndc_y)  # Y轴反转
+            
+            return {"x": int(screen_x), "y": int(screen_y)}
+        except Exception as e:
+            from classes.logger import Logger
+            logger = Logger.get_logger()
+            logger.error(f"W2S转换失败: {e}")
+            return None
+    
+    @staticmethod
+    def calculate_fov_distance(screen_center, target_pos):
+        """
+        计算目标到屏幕中心的距离（像素）
+        :param screen_center: 屏幕中心 {x, y}
+        :param target_pos: 目标屏幕坐标 {x, y}
+        :return: 距离（像素）
+        """
+        import math
+        dx = target_pos['x'] - screen_center['x']
+        dy = target_pos['y'] - screen_center['y']
+        return math.sqrt(dx * dx + dy * dy)

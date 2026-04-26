@@ -18,7 +18,7 @@ mouse = Controller()
 # 初始化日志记录器以确保一致的日志记录
 logger = Logger.get_logger()
 # 定义主循环睡眠时间以减少CPU使用率
-MAIN_LOOP_SLEEP = 0.05
+MAIN_LOOP_SLEEP = 0
 
 class CS2Aimbot:
     def __init__(self, memory_manager: MemoryManager) -> None:
@@ -39,7 +39,7 @@ class CS2Aimbot:
         # 用于粘性目标跟踪
         self.last_target = None
         self.last_target_time = 0
-        self.target_stickiness = 0.1  # 粘性持续时间（秒）
+        self.target_stickiness = 0  # 粘性持续时间（秒）
 
         # 设置监听器
         self.keyboard_listener = KeyboardListener(on_press=self.on_key_press, on_release=self.on_key_release)
@@ -54,13 +54,18 @@ class CS2Aimbot:
         self.toggle_mode = settings['ToggleMode']
         self.attack_on_teammates = settings['AttackOnTeammates']
         
-        active_weapon = settings.get("active_weapon_type", "AK47")
-        weapon_settings = settings["WeaponSettings"].get(active_weapon, settings["WeaponSettings"].get("AK47", settings["WeaponSettings"].get("Rifles", {
-            'FOV': 50, 'Smooth': 2.0
-        })))
+        # 直接使用固定的FOV和平滑度配置
+        self.fov = settings.get('FOV', 50)
+        self.smooth = settings.get('Smooth', 0)  # 降低默认平滑度，使视角更流畅
         
-        self.fov = weapon_settings['FOV']
-        self.smooth = weapon_settings['Smooth']
+        # 瞄准位置配置（头部/脖子/胸部/根部）
+        aim_position_map = {
+            '头部': 'head',
+            '脖子': 'neck',
+            '胸部': 'chest',
+            '根部': 'root'
+        }
+        self.aim_position = aim_position_map.get(settings.get('AimPosition', '头部'), 'head')
         
         self.mouse_button_map = {
             "mouse3": Button.middle,
@@ -143,24 +148,82 @@ class CS2Aimbot:
         """计算两点之间的欧几里得距离。"""
         return math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
 
-    def move_mouse_to_target(self, target_x, target_y, smooth_factor):
-        """将鼠标光标平滑移动到目标位置。"""
-        # 使用Windows API获取当前鼠标位置以获得更好的准确性
-        current_x, current_y = win32api.GetCursorPos()
+    def aim_at_target(self, target_angle: dict, smooth_factor: float) -> None:
+        """
+        使用ViewAngles注入平滑瞄准目标
+        :param target_angle: 目标角度 {pitch, yaw}
+        :param smooth_factor: 平滑因子（越大越平滑）
+        """
+        try:
+            # 读取当前视角角度
+            # 读取当前视角角度
+            current_angles_vec = self.memory_manager.read_vec3(
+                self.memory_manager.client_base + self.memory_manager.dwViewAngles
+            )
+            
+            if not current_angles_vec:
+                logger.warning("无法读取当前视角角度")
+                return
+            
+            # 转换为 pitch/yaw 格式
+            current_angles = {
+                'pitch': current_angles_vec['x'],
+                'yaw': current_angles_vec['y']
+            }
+            
+            # 计算角度差
+            delta_pitch = target_angle['pitch'] - current_angles['pitch']
+            delta_yaw = target_angle['yaw'] - current_angles['yaw']
+            
+            # 规范化Yaw到 -180 ~ 180
+            while delta_yaw > 180:
+                delta_yaw -= 360
+            while delta_yaw < -180:
+                delta_yaw += 360
+            
+            # 应用平滑因子
+            new_pitch = current_angles['pitch'] + (delta_pitch / max(smooth_factor, 1.0))
+            new_yaw = current_angles['yaw'] + (delta_yaw / max(smooth_factor, 1.0))
+            
+            # 规范化Pitch范围
+            if new_pitch > 89.0:
+                new_pitch = 89.0
+            elif new_pitch < -89.0:
+                new_pitch = -89.0
+            
+            # 规范化Yaw范围
+            if new_yaw > 180.0:
+                new_yaw -= 360.0
+            elif new_yaw < -180.0:
+                new_yaw += 360.0
+            
+            # 写入新的视角角度
+            success = self.memory_manager.write_view_angles({
+                'pitch': new_pitch,
+                'yaw': new_yaw
+            })
+            
+            if not success:
+                logger.error("写入视角角度失败")
+        except Exception as e:
+            logger.error(f"瞄准目标时出错: {e}", exc_info=True)
         
-        # 计算到目标的距离
-        distance_x = target_x - current_x
-        distance_y = target_y - current_y
-        
-        # 应用平滑因子并保持最小移动以避免抖动
-        move_x = distance_x / max(smooth_factor, 1.0)
-        move_y = distance_y / max(smooth_factor, 1.0)
-        
-        # 使用Windows API移动鼠标以获得更好的精度
-        new_x = int(current_x + move_x)
-        new_y = int(current_y + move_y)
-        win32api.SetCursorPos((new_x, new_y))
-        
+    def calculate_angle_distance(self, current_angle: dict, target_angle: dict) -> float:
+        """计算两个角度之间的距离（度）"""
+        try:
+            delta_pitch = abs(target_angle['pitch'] - current_angle['pitch'])
+            delta_yaw = abs(target_angle['yaw'] - current_angle['yaw'])
+            
+            # 规范化Yaw
+            if delta_yaw > 180:
+                delta_yaw = 360 - delta_yaw
+            
+            # 返回欧几里得距离
+            return math.sqrt(delta_pitch**2 + delta_yaw**2)
+        except Exception as e:
+            logger.error(f"计算角度距离失败: {e}")
+            return float('inf')
+    
     def start(self) -> None:
         """启动自动瞄准。"""
         # 将运行标志设置为True并记录自动瞄准已启动
@@ -188,55 +251,56 @@ class CS2Aimbot:
                     continue
 
                 # 从内存管理器获取自动瞄准数据
-                data = self.memory_manager.get_aimbot_data()
+                data = self.memory_manager.get_aimbot_data(self.aim_position)
                 if data and data["targets"]:
-                    # 寻找最佳目标（最接近准星的）
+                    # 寻找最佳目标（角度距离最近的）
                     best_target = None
-                    best_distance = float('inf')
-                    screen_center_x, screen_center_y = data["screen_width"] // 2, data["screen_height"] // 2
+                    best_angle_distance = float('inf')
                     
                     current_time = time.time()
                     
                     # 首先检查是否应该继续跟踪上一个目标
                     if (self.last_target and 
-                        current_time - self.last_target_time < self.target_stickiness and
-                        self.should_aim(self.last_target["team"], data["player_team"], self.last_target["health"])):
-                        # 计算上一个目标的距离
-                        last_target_distance = self.calculate_distance(
-                            screen_center_x, screen_center_y, 
-                            self.last_target["x"], self.last_target["y"]
-                        )
-                        # 如果上一个目标仍在视野内且距离不远，则继续跟踪
-                        if last_target_distance <= self.fov * 1.5:
-                            best_target = self.last_target
-                            best_distance = last_target_distance
+                        current_time - self.last_target_time < self.target_stickiness):
+                        # 查找上一个目标在 targets 中
+                        for target in data["targets"]:
+                            if (target["entity"]["ptr"] == self.last_target["entity_ptr"]):
+                                best_target = target
+                                best_angle_distance = self.calculate_angle_distance(
+                                    data.get("current_angles", {"pitch": 0, "yaw": 0}),
+                                    target["angle"]
+                                )
+                                break
                     
                     # 如果没有跟踪上一个目标，则寻找新的目标
                     if not best_target:
                         for target in data["targets"]:
-                            if self.should_aim(target["team"], data["player_team"], target["health"]):
-                                # 计算从屏幕中心到目标的距离
-                                distance = self.calculate_distance(screen_center_x, screen_center_y, target["x"], target["y"])
-                                
-                                # 检查目标是否在视野内且比之前的目标更近
-                                if distance <= self.fov and distance < best_distance:
-                                    best_target = target
-                                    best_distance = distance
+                            # 计算角度距离（用于FOV判断）
+                            angle_distance = self.calculate_angle_distance(
+                                data.get("current_angles", {"pitch": 0, "yaw": 0}),
+                                target["angle"]
+                            )
+                            
+                            # 检查目标是否在视野内且比之前的目标更近
+                            if angle_distance <= self.fov and angle_distance < best_angle_distance:
+                                best_target = target
+                                best_angle_distance = angle_distance
                     
                     # 更新最后目标信息
                     if best_target:
-                        self.last_target = best_target
+                        self.last_target = {
+                            "entity_ptr": best_target["entity"]["ptr"],
+                            "angle": best_target["angle"]
+                        }
                         self.last_target_time = current_time
-                    
-                    # 如果找到了目标，则瞄准它
-                    if best_target:
-                        # 检查目标是否在视野范围内
-                        if best_distance <= self.fov:
-                            # 根据距离调整平滑度 - 距离越远，平滑度越高
-                            dynamic_smooth = self.smooth * (1.0 + best_distance / self.fov)
-                            self.move_mouse_to_target(best_target["x"], best_target["y"], dynamic_smooth)
-                            # 添加小延迟以确保鼠标移动完成
-                            sleep(0.005)
+                        
+                        # 如果找到了目标，则瞄准它
+                        if best_angle_distance <= self.fov:
+                            # 使用固定平滑度，避免卡顿
+                            self.aim_at_target(best_target["angle"], self.smooth)
+                else:
+                    pass
+
 
                 sleep(MAIN_LOOP_SLEEP)
             except Exception as e:
@@ -247,7 +311,7 @@ class CS2Aimbot:
         """停止自动瞄准并清理资源。"""
         self.is_running = False
         self.stop_event.set()
-        time.sleep(0.05)  # 短暂延迟以允许线程处理停止事件
+
         try:
             if hasattr(self.keyboard_listener, 'running') and self.keyboard_listener.running:
                 self.keyboard_listener.stop()

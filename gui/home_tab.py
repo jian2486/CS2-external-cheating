@@ -1,4 +1,7 @@
 import customtkinter as ctk
+import requests
+import json
+from datetime import datetime
 
 from classes.config_manager import ConfigManager
 from classes.logger import Logger
@@ -93,9 +96,38 @@ def populate_dashboard(main_window, frame):
     buttons_container = ctk.CTkFrame(control_buttons, fg_color="transparent")
     buttons_container.pack(fill="x", expand=True)
     
-    # 第一行：更新偏移量按钮
+    # 第一行：偏移量更新信息
+    offset_update_frame = ctk.CTkFrame(buttons_container, fg_color="transparent")
+    offset_update_frame.pack(fill="x", pady=(0, 5))
+    
+    # 获取GitHub最新提交日期
+    github_commit_date = CS2Detector.get_github_latest_commit_date()
+    
+    # 离线更新偏移量按钮
+    main_window.offline_update_button = ctk.CTkButton(
+        offset_update_frame,
+        text="离线更新偏移量",
+        command=main_window.offline_update_offsets,
+        height=40,
+        corner_radius=0,
+        fg_color=("#2563eb", "#3b82f6"),
+        hover_color=("#1d4ed8", "#2563eb"),
+        font=(MAIN_FONT, INPUT_BOLD_FONT_SIZE, "bold")
+    )
+    main_window.offline_update_button.pack(side="left", padx=(0, 10))
+    
+    # 偏移量更新标签
+    main_window.offset_update_label = ctk.CTkLabel(
+        offset_update_frame,
+        text=f"偏移量更新: {github_commit_date}",
+        font=(THIRDLY_FONT, SETTING_DESCRIPTION_FONT_SIZE),
+        text_color="#6b7280"
+    )
+    main_window.offset_update_label.pack(side="left")
+    
+    # 第二行：更新偏移量按钮和CS更新信息
     update_frame = ctk.CTkFrame(buttons_container, fg_color="transparent")
-    update_frame.pack(fill="x", pady=(0, 10))
+    update_frame.pack(fill="x", pady=(5, 10))
     
     # 获取CS2完整版本信息
     cs2_version_info = CS2Detector.get_cs2_version_info()
@@ -135,7 +167,7 @@ def populate_dashboard(main_window, frame):
     )
     main_window.update_time_label.pack(side="left", pady=(5, 0))
     
-    # 第二行：启动和停止按钮
+    # 第三行：启动和停止按钮
     action_frame = ctk.CTkFrame(buttons_container, fg_color="transparent")
     action_frame.pack(fill="x", pady=(10, 0))
     

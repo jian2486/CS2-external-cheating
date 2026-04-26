@@ -1,11 +1,15 @@
 """视觉设置标签页模块"""
 
 import customtkinter as ctk
+from tkinter import colorchooser
 
 from classes.config_manager import COLOR_CHOICES
+from classes.logger import Logger
 from classes.utility import Utility
 from gui.font_manager import *
 from gui.overlay_settings_tab import save_checkbox_setting, update_slider_value
+
+logger = Logger.get_logger()
 
 
 def populate_visual_settings(main_window, frame):
@@ -84,8 +88,8 @@ def create_glow_section(main_window, parent):
         ("不对尸体发光", "checkbox", "glow_exclude_dead", "切换是否对尸体应用发光效果"),
         ("队友发光", "checkbox", "glow_teammates", "切换是否对队友应用发光效果"),
         ("发光透明度", "slider", "glow_alpha", "调整发光效果透明度 (0.0-1.0)"),
-        ("敌人发光颜色", "combo", "glow_color_hex", "选择敌人发光效果颜色"),
-        ("队友发光颜色", "combo", "glow_teammate_color_hex", "选择队友发光效果颜色")
+        ("敌人发光颜色", "color_picker", "glow_color_hex", "选择敌人发光效果颜色"),
+        ("队友发光颜色", "color_picker", "glow_teammate_color_hex", "选择队友发光效果颜色")
     ]
 
     # 创建每个设置项
@@ -318,13 +322,40 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
             dropdown_text_color=("#1f2937", "#ffffff"),
             state="readonly",
             justify="center",
-            command=lambda e: main_window.save_settings(show_message=False)
+            command=lambda e: on_color_combo_change(e, key, main_window)
         )
         widget.set(Utility.get_color_name_from_hex(main_window.overlay.config["Overlay"][key]))
         widget.bind("<FocusOut>", lambda e: main_window.save_settings(show_message=False))
         widget.bind("<Return>", lambda e: main_window.save_settings(show_message=False))
         widget.pack()
         main_window.__setattr__(f"{key}_combo", widget)
+        
+    elif widget_type == "color_picker":
+        # 颜色选择器按钮
+        color_btn = ctk.CTkButton(
+            widget_frame,
+            text="选择颜色",
+            width=100,
+            height=25,
+            corner_radius=0,
+            font=(MAIN_FONT, INPUT_FONT_SIZE),
+            fg_color=("#D5006D", "#E91E63"),
+            hover_color=("#B8004A", "#C2185B"),
+            command=lambda: open_color_picker(key, main_window)
+        )
+        color_btn.pack()
+        
+        # 颜色预览标签
+        preview_label = ctk.CTkLabel(
+            widget_frame,
+            text=main_window.overlay.config["Overlay"][key],
+            font=(MAIN_FONT, INPUT_FONT_SIZE),
+            text_color=("#1f2937", "#ffffff")
+        )
+        preview_label.pack(pady=(5, 0))
+        
+        main_window.__setattr__(f"{key}_color_btn", color_btn)
+        main_window.__setattr__(f"{key}_preview", preview_label)
 
     elif widget_type == "entry":
         widget = ctk.CTkEntry(
@@ -341,3 +372,31 @@ def create_setting_item(parent, label_text, description, widget_type, key, main_
         )
         widget.pack()
         main_window.__setattr__(f"{key}_entry", widget)
+
+def on_color_combo_change(selected_value, key, main_window):
+    """颜色ComboBox变化时的回调"""
+    logger.debug(f"颜色选择变化: {key} -> {selected_value}")
+    main_window.save_settings(show_message=False)
+
+def open_color_picker(key, main_window):
+    """打开颜色选择器对话框"""
+    # 获取当前颜色
+    current_color = main_window.overlay.config["Overlay"].get(key, "#FF00FF")
+    
+    # 打开颜色选择器
+    color = colorchooser.askcolor(title="选择颜色", initialcolor=current_color)
+    
+    if color and color[1]:  # color[1] 是十六进制值
+        hex_color = color[1].upper()
+        logger.debug(f"颜色选择器: {key} -> {hex_color}")
+        
+        # 更新配置
+        main_window.overlay.config["Overlay"][key] = hex_color
+        
+        # 更新预览标签
+        preview_attr = f"{key}_preview"
+        if hasattr(main_window, preview_attr):
+            getattr(main_window, preview_attr).configure(text=hex_color)
+        
+        # 保存设置
+        main_window.save_settings(show_message=False)

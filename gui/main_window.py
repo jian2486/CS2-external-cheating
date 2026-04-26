@@ -69,9 +69,10 @@ class MainWindow:
         
         # 初始化显示亲和力管理器
         self.affinity_manager = DisplayAffinityManager()
-        # 检查配置并根据配置决定是否启用防截屏功能
+        # 程序启动时根据配置决定是否启用防截屏功能（只检查一次）
         anti_screenshot_enabled = self.config.get("General", {}).get("AntiScreenshot", False)
-        self.affinity_manager.set_anti_screenshot_enabled(anti_screenshot_enabled)
+
+        # 启动后台管理线程
         self.affinity_manager.start_affinity_thread()
         
         # 创建具有标题和初始大小的主窗口
@@ -104,6 +105,9 @@ class MainWindow:
         # 配置网格布局使UI具有响应性
         self.root.grid_columnconfigure(0, weight=1)
         self.root.grid_rowconfigure(0, weight=1)
+        
+        # 先初始化功能实例
+        self.initialize_features()
         
         # 初始化UI组件，如标题和内容
         self.setup_ui()
@@ -175,6 +179,10 @@ class MainWindow:
             # 将TriggerBot和Glow实例传递给Overlay，以便共享实体信息
             self.overlay.triggerbot_instance = self.triggerbot
             self.overlay.glow_instance = self.glow
+            
+            # 将Glow实例传递给其他需要它的功能
+            self.triggerbot.glow_instance = self.glow
+            self.aimbot.glow_instance = self.glow
             
             logger.info("所有功能初始化成功")
         except Exception as e:
@@ -334,6 +342,66 @@ class MainWindow:
         else:
             # 显示错误消息
             messagebox.showerror("更新失败", "无法更新偏移量")
+    
+    def offline_update_offsets(self):
+        """离线更新偏移量"""
+        try:
+            # 禁用按钮防止重复点击
+            self.offline_update_button.configure(state="disabled", text="准备更新...")
+            
+            def run_offline_update():
+                try:
+                    # 导入Utility类
+                    from classes.utility import Utility
+                    
+                    def progress_callback(progress):
+                        # 在主线程中更新按钮文本
+                        self.root.after(0, lambda p=progress: self.offline_update_button.configure(text=f"更新中... {p}%"))
+                    
+                    success = Utility.offline_update_offsets(progress_callback)
+                    # 在主线程中更新UI
+                    self.root.after(0, lambda: self.finish_offline_update(success))
+                except Exception as e:
+                    logger.error(f"离线更新偏移量时出错: {e}")
+                    self.root.after(0, lambda: self.finish_offline_update(False))
+            
+            # 启动更新线程
+            update_thread = threading.Thread(target=run_offline_update, daemon=True)
+            update_thread.start()
+        except Exception as e:
+            logger.error(f"启动离线偏移量更新时出错: {e}")
+            self.finish_offline_update(False)
+    
+    def finish_offline_update(self, success):
+        """完成离线偏移量更新并更新UI"""
+        # 重新启用按钮
+        self.offline_update_button.configure(state="normal", text="离线更新偏移量")
+        
+        if success:
+            # 更新成功，更新时间标签
+            try:
+                import datetime
+                offsets_dir = Path("CS2-external-cheating/Offsets")
+                offsets_file = offsets_dir / "offsets.json"
+                if offsets_file.exists():
+                    mtime = offsets_file.stat().st_mtime
+                    last_update = datetime.datetime.fromtimestamp(mtime)
+                    last_update_text = last_update.strftime("%Y-%m-%d %H:%M")
+                    # 只更新仪表板页面上的更新时间标签（如果存在）
+                    if hasattr(self, 'update_time_label') and self.update_time_label.winfo_exists():
+                        self.update_time_label.configure(text=last_update_text)
+                    
+                # 重新加载偏移量
+                self.offsets, self.client_data, self.buttons_data = self.fetch_offsets_or_warn()
+                self.memory_manager.update_offsets(self.offsets, self.client_data, self.buttons_data)
+                
+                # 不显示弹窗，仅在日志中记录成功信息
+                logger.info("离线偏移量更新完成，UI已更新")
+            except Exception as e:
+                logger.error(f"离线更新偏移量后处理失败: {e}")
+        else:
+            # 显示错误消息
+            messagebox.showerror("更新失败", "离线偏移量更新失败")
 
     def create_main_content(self):
         """创建具有现代布局的主内容区域"""
@@ -795,16 +863,15 @@ class MainWindow:
             self.post_shot_delay_entry.insert(0, str(settings.get('PostShotDelay', 0.1)))
 
     def update_aimbot_weapon_settings_display(self):
-        """根据选定的武器类型更新自瞄UI字段"""
-        weapon_type = self.active_aimbot_weapon_type.get()
-        settings = self.config['Aimbot']['WeaponSettings'].get(weapon_type, {})
+        """更新自瞄UI字段显示固定配置值"""
+        settings = self.config['Aimbot']
         
         if hasattr(self, 'fov_entry'):
             self.fov_entry.delete(0, "end")
             self.fov_entry.insert(0, str(settings.get('FOV', 50)))
         if hasattr(self, 'smooth_entry'):
             self.smooth_entry.delete(0, "end")
-            self.smooth_entry.insert(0, str(settings.get('Smooth', 2.0)))
+            self.smooth_entry.insert(0, str(settings.get('Smooth', 1.5)))
 
     def save_settings(self, show_message=False):
         """保存配置设置并实时应用到相关功能"""
@@ -1022,16 +1089,6 @@ class MainWindow:
                 aimbot_settings["Smooth"] = float(self.smooth_entry.get())
             except ValueError:
                 pass
-        
-        if hasattr(self, 'active_aimbot_weapon_type'):
-            weapon_type = self.active_aimbot_weapon_type.get()
-            aimbot_settings['active_weapon_type'] = weapon_type
-            weapon_settings = aimbot_settings['WeaponSettings'].get(weapon_type, {})
-            
-            if hasattr(self, 'fov_entry'): weapon_settings['FOV'] = float(self.fov_entry.get())
-            if hasattr(self, 'smooth_entry'): weapon_settings['Smooth'] = float(self.smooth_entry.get())
-            
-            aimbot_settings['WeaponSettings'][weapon_type] = weapon_settings
 
         # 保存覆盖层设置
         overlay_settings = {}
@@ -1083,10 +1140,10 @@ class MainWindow:
             overlay_settings["glow_teammates"] = self.glow_teammates_var.get()
         if hasattr(self, 'glow_alpha_slider'):  # 修改：从glow_thickness_slider改为glow_alpha_slider
             overlay_settings["glow_alpha"] = self.glow_alpha_slider.get()  # 修改：从glow_thickness改为glow_alpha
-        if hasattr(self, 'glow_color_combo'):
-            overlay_settings["glow_color_hex"] = COLOR_CHOICES[self.glow_color_combo.get()]
-        if hasattr(self, 'glow_teammate_color_combo'):
-            overlay_settings["glow_teammate_color_hex"] = COLOR_CHOICES[self.glow_teammate_color_combo.get()]
+        
+        # 颜色选择器：直接从overlay.config读取（已在open_color_picker中更新）
+        overlay_settings["glow_color_hex"] = self.overlay.config["Overlay"].get("glow_color_hex", "#FF00FF")
+        overlay_settings["glow_teammate_color_hex"] = self.overlay.config["Overlay"].get("glow_teammate_color_hex", "#00FFFF")
         
         self.config["Overlay"] = overlay_settings
 
@@ -1266,9 +1323,8 @@ class MainWindow:
         if hasattr(self, 'aimbot_attack_teammates_var'):
             self.aimbot_attack_teammates_var.set(aimbot_settings["AttackOnTeammates"])
 
-        if hasattr(self, 'active_aimbot_weapon_type'):
-            self.active_aimbot_weapon_type.set(aimbot_settings.get('active_weapon_type', 'AK47'))
-            self.update_aimbot_weapon_settings_display()
+        # 更新自瞄显示
+        self.update_aimbot_weapon_settings_display()
 
         # 加载覆盖层设置
         overlay_settings = self.config["Overlay"]
@@ -1326,10 +1382,10 @@ class MainWindow:
             self.glow_teammates_var.set(overlay_settings.get("glow_teammates", False))
         if hasattr(self, 'glow_alpha_slider'):  # 修改：从glow_thickness_slider改为glow_alpha_slider
             self.glow_alpha_slider.set(overlay_settings.get("glow_alpha", 0.5))  # 修改：从glow_thickness改为glow_alpha
-        if hasattr(self, 'glow_color_combo'):
-            self.glow_color_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_color_hex", "#FF00FF")))
-        if hasattr(self, 'glow_teammate_color_combo'):
-            self.glow_teammate_color_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_teammate_color_hex", "#00FFFF")))
+        if hasattr(self, 'glow_color_hex_combo'):
+            self.glow_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_color_hex", "#FF00FF")))
+        if hasattr(self, 'glow_teammate_color_hex_combo'):
+            self.glow_teammate_color_hex_combo.set(Utility.get_color_name_from_hex(overlay_settings.get("glow_teammate_color_hex", "#00FFFF")))
 
         # 更新连跳设置UI
         bunnyhop_settings = self.config.get("Bunnyhop", {})

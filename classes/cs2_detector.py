@@ -1,6 +1,9 @@
 import os
 import psutil
 import winreg
+import requests
+import json
+from datetime import datetime
 from pathlib import Path
 from classes.logger import Logger
 
@@ -163,3 +166,35 @@ class CS2Detector:
         except Exception as e:
             logger.error(f"读取steam.inf文件失败: {e}")
             return None
+    
+    @staticmethod
+    def get_github_latest_commit_date():
+        """获取GitHub上cs2-dumper项目的最新提交日期"""
+        try:
+            # GitHub API URL
+            url = "https://api.github.com/repos/a2x/cs2-dumper/commits/main"
+            
+            # 发送请求（忽略SSL验证）
+            response = requests.get(url, timeout=10, verify=False)
+            response.raise_for_status()
+            
+            # 解析JSON响应
+            commit_data = response.json()
+            commit_timestamp = commit_data["commit"]["committer"]["date"]
+            
+            # 解析并格式化时间戳
+            commit_datetime = datetime.fromisoformat(commit_timestamp.replace('Z', '+00:00'))
+            chinese_date = commit_datetime.strftime("%Y年%m月%d日")
+            
+            logger.debug(f"成功获取GitHub最新提交日期: {chinese_date}")
+            return f"提交日期：{chinese_date}"
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"获取GitHub提交信息失败: {e}")
+            return "获取失败"
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            logger.error(f"解析GitHub响应失败: {e}")
+            return "解析失败"
+        except Exception as e:
+            logger.error(f"获取GitHub提交日期时发生未知错误: {e}")
+            return "未知错误"

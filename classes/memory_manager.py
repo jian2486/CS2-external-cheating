@@ -1,3 +1,4 @@
+import math
 import struct
 
 import numpy as np
@@ -11,7 +12,8 @@ from classes.utility import Utility
 logger = Logger.get_logger()
 
 class MemoryManager:
-    ENTITY_ENTRY_SIZE = 112 #每个实体占用的空间
+    ENTITY_ENTRY_SIZE = 112  # 每个实体占用的空间
+    BONE_ARRAY_OFFSET = 0x80  # CSkeletonInstance::m_modelState + 0x80 = m_pBoneArray
 
     def __init__(self, offsets: dict, client_data: dict, buttons_data: dict) -> None:
         """使用偏移量和客户端数据初始化MemoryManager。"""
@@ -95,17 +97,19 @@ class MemoryManager:
             self.m_iIDEntIndex = extracted["m_iIDEntIndex"]
             self.m_iszPlayerName = extracted["m_iszPlayerName"]
             self.m_vOldOrigin = extracted["m_vOldOrigin"]
+            self.m_vecAbsOrigin = extracted.get("m_vecAbsOrigin")  # 备用位置偏移量
             self.m_pGameSceneNode = extracted["m_pGameSceneNode"]
             self.m_bDormant = extracted["m_bDormant"]
             self.m_hPlayerPawn = extracted["m_hPlayerPawn"]
             self.m_flFlashDuration = extracted["m_flFlashDuration"]
             self.m_pBoneArray = extracted["m_pBoneArray"]
-            self.m_pClippingWeapon = extracted["m_pClippingWeapon"]
             self.m_AttributeManager = extracted["m_AttributeManager"]
             self.m_iItemDefinitionIndex = extracted["m_iItemDefinitionIndex"]
             self.m_Item = extracted["m_Item"]
             self.m_pWeaponServices = extracted["m_pWeaponServices"]
             self.m_hActiveWeapon = extracted["m_hActiveWeapon"]
+            self.m_angEyeAngles = extracted.get("m_angEyeAngles")  # 自瞄用视角角度
+            self.dwViewAngles = extracted.get("dwViewAngles")  # 全局视角角度地址
         else:
             logger.error("从提取的数据初始化偏移量失败")
 
@@ -126,6 +130,144 @@ class MemoryManager:
         except Exception as e:
             logger.error(f"读取实体时出错: {e}")
             return None
+    
+    def get_all_entities(self, max_entities=64):
+        """
+        获取所有有效实体列表（通用方法）- 使用与Glow相同的实体遍历逻辑
+        :param max_entities: 最大实体数量
+        :return: 实体信息列表 [{entity_ptr, health, team, position, dormant, ...}]
+        """
+        entities = []
+        
+        try:
+            # 获取本地玩家队伍
+            local_player = self.read_longlong(self.client_base + self.dwLocalPlayerPawn)
+            if not local_player:
+                return entities
+            
+            local_team = self.read_int(local_player + self.m_iTeamNum)
+            
+            # 获取实体列表
+            entity_list = self.read_longlong(self.client_base + self.dwEntityList)
+            if not entity_list:
+                return entities
+            
+            # 获取列表入口
+            entry = self.read_longlong(entity_list + 0x10)
+            if not entry:
+                return entities
+            
+            # 遍历所有实体
+            for i in range(max_entities):
+                try:
+                    # 获取控制器
+                    controller = self.read_longlong(entry + i * self.ENTITY_ENTRY_SIZE)
+                    if not controller:
+                        continue
+                    
+                    # 获取玩家pawn句柄
+                    player_pawn_handle = self.read_longlong(controller + self.m_hPlayerPawn)
+                    if not player_pawn_handle:
+                        continue
+                    
+                    # 获取实体列表条目
+                    entry_2 = self.read_longlong(
+                        entity_list + 0x8 * ((player_pawn_handle & 0x7FFF) >> 9) + 0x10
+                    )
+                    if not entry_2:
+                        continue
+                    
+                    # 获取当前实体（pawn）
+                    current_entity = self.read_longlong(
+                        entry_2 + self.ENTITY_ENTRY_SIZE * (player_pawn_handle & 0x1FF)
+                    )
+                    if not current_entity:
+                        continue
+                    
+                    # 读取基本信息
+                    team = self.read_int(current_entity + self.m_iTeamNum)
+                    health = self.read_int(current_entity + self.m_iHealth)
+                    
+                    # 过滤无效实体
+                    if health <= 0:
+                        continue
+                    
+                    # 获取位置
+                    game_scene_node = self.read_longlong(current_entity + self.m_pGameSceneNode)
+                    position = {"x": 0, "y": 0, "z": 0}
+                    bone_array_ptr = None
+                    
+                    if game_scene_node:
+                        # 先尝试 m_vOldOrigin
+                        position = self.read_vec3(game_scene_node + self.m_vOldOrigin)
+                        
+                        # 如果无效，尝试 m_vecAbsOrigin
+                        if (position["x"] == 0 and position["y"] == 0) and hasattr(self, 'm_vecAbsOrigin') and self.m_vecAbsOrigin:
+                            position = self.read_vec3(game_scene_node + self.m_vecAbsOrigin)
+                        
+                        bone_array_ptr = self.read_longlong(game_scene_node + self.m_pBoneArray)
+                    
+                    entities.append({
+                        "index": i,
+                        "ptr": current_entity,
+                        "health": health,
+                        "team": team,
+                        "position": position,
+                        "bone_array_ptr": bone_array_ptr,
+                        "dormant": 0  # Glow逻辑中没有检查dormant
+                    })
+                except Exception as e:
+                    logger.debug(f"读取实体 {i} 时出错: {e}")
+                    continue
+            
+
+        except Exception as e:
+            logger.error(f"获取实体列表失败: {e}")
+        
+        return entities
+    
+    def calculate_angle(self, src: dict, dst: dict) -> dict:
+        """
+        计算从源点到目标点的角度
+        :param src: 源点 {x, y, z}
+        :param dst: 目标点 {x, y, z}
+        :return: {pitch, yaw} 角度（度）
+        """
+        import math
+        
+        delta_x = dst['x'] - src['x']
+        delta_y = dst['y'] - src['y']
+        delta_z = dst['z'] - src['z']
+        
+        # 计算水平距离
+        distance_xy = math.sqrt(delta_x * delta_x + delta_y * delta_y)
+        
+        # 计算 Pitch（俯仰角）
+        pitch = math.degrees(math.atan2(-delta_z, distance_xy))
+        
+        # 计算 Yaw（偏航角）
+        yaw = math.degrees(math.atan2(delta_y, delta_x))
+        
+        return {"pitch": pitch, "yaw": yaw}
+    
+    def write_view_angles(self, angles: dict) -> bool:
+        """
+        写入视角角度到内存
+        :param angles: {pitch, yaw}
+        :return: 是否成功
+        """
+        try:
+            if not hasattr(self, 'dwViewAngles') or self.dwViewAngles is None:
+                logger.warning("dwViewAngles 偏移量未找到")
+                return False
+            
+            view_angles_addr = self.client_base + self.dwViewAngles
+            self.write_float(view_angles_addr, angles['pitch'])      # Pitch
+            self.write_float(view_angles_addr + 4, angles['yaw'])    # Yaw
+            return True
+        except Exception as e:
+            logger.error(f"写入视角角度失败: {e}")
+            return False
 
     def get_fire_logic_data(self) -> dict | None:
         """检索射击逻辑所需的数据。"""
@@ -146,14 +288,13 @@ class MemoryManager:
                         entity_team = self.read_int(entity + self.m_iTeamNum)
                         player_team = self.read_int(player + self.m_iTeamNum)
                         entity_health = self.read_int(entity + self.m_iHealth)
-                        weapon_type = self.get_weapon_type()
                         
                         # 移除队伍数据检查，总是返回数据
                         return {
                             "entity_team": entity_team,
                             "player_team": player_team,
                             "entity_health": entity_health,
-                            "weapon_type": weapon_type
+                            "weapon_type": "Rifles"
                         }
                     except pymem.exception.MemoryReadError as e:
                         # 即使读取实体信息失败，也返回基本数据以触发扳机
@@ -189,91 +330,121 @@ class MemoryManager:
                 logger.error(f"射击逻辑中出现错误: {e}")
             return None
 
-    def get_aimbot_data(self) -> dict | None:
-        """检索自瞄所需的数据。"""
+    def get_aimbot_data(self, aim_position='head') -> dict | None:
+        """检索自瞄所需的数据（基于ViewAngles注入）。"""
         try:
             player = self.read_longlong(self.client_base + self.dwLocalPlayerPawn)
             if not player:
+                logger.debug("玩家指针为空")
                 return None
                 
             player_team = self.read_int(player + self.m_iTeamNum)
             
-            # 获取实际屏幕尺寸
-            import tkinter
-            root = tkinter.Tk()
-            screen_width = root.winfo_screenwidth()
-            screen_height = root.winfo_screenheight()
-            root.destroy()
-            
-            # 获取用于世界到屏幕转换的视图矩阵
-            view_matrix = self.read_floats(self.client_base + self.dwViewMatrix, 16)
-            
-            # 检查view_matrix是否有效
-            if not view_matrix or all(v == 0.0 for v in view_matrix):
-                logger.warning("视图矩阵无效，可能是由于偏移量过期")
+            # 获取玩家位置
+            game_scene_node = self.read_longlong(player + self.m_pGameSceneNode)
+            if not game_scene_node:
+                logger.debug("游戏场景节点为空")
                 return None
             
-            # 收集目标
-            targets = []
-            for i in range(64):  # Check up to 64 entities
-                entity = self.get_entity(i)
-                if not entity:
-                    continue
-                    
-                # 跳过休眠实体
-                dormant = self.read_int(entity + self.m_bDormant)
-                if dormant:
-                    continue
-                    
-                entity_health = self.read_int(entity + self.m_iHealth)
-                if entity_health <= 0:
-                    continue
-                    
-                entity_team = self.read_int(entity + self.m_iTeamNum)
-                
-                # 获取实体位置（头部骨骼位置）
-                game_scene_node = self.read_longlong(entity + self.m_pGameSceneNode)
-                if not game_scene_node:
-                    continue
-                    
-                bone_array = self.read_longlong(game_scene_node + self.m_pBoneArray)
-                if not bone_array:
-                    continue
-                    
-                # 获取头部骨骼位置（通常是第6个骨骼）
-                head_pos = self.read_vec3(bone_array + 6 * 32)  # 6th bone (head)
-                
-                # 验证头部位置
-                if head_pos["x"] == 0 and head_pos["y"] == 0 and head_pos["z"] == 0:
-                    continue
-                
-                # 将世界位置转换为屏幕位置
-                screen_pos = self.world_to_screen(head_pos, view_matrix, screen_width, screen_height)
-                if screen_pos:
-                    targets.append({
-                        "x": screen_pos["x"],
-                        "y": screen_pos["y"],
-                        "team": entity_team,
-                        "health": entity_health
-                    })
+            # 尝试多个位置偏移量
+            player_pos = self.read_vec3(game_scene_node + self.m_vOldOrigin)
             
-            weapon_type = self.get_weapon_type()
+            # 如果 m_vOldOrigin 无效，尝试 m_vecAbsOrigin
+            if not player_pos or (player_pos["x"] == 0 and player_pos["y"] == 0):
+                if hasattr(self, 'm_vecAbsOrigin') and self.m_vecAbsOrigin:
+                    player_pos = self.read_vec3(game_scene_node + self.m_vecAbsOrigin)
+                    
+                else:
+                    # 硬编码备用值
+                    player_pos = self.read_vec3(game_scene_node + 544)
+
+            
+            if not player_pos or (player_pos["x"] == 0 and player_pos["y"] == 0):
+
+                return None
+            
+            # 玩家位置是脚底坐标，需要加上眼睛高度
+            player_eye_pos = {
+                "x": player_pos["x"],
+                "y": player_pos["y"],
+                "z": player_pos["z"] + 64.0  # CS2 玩家眼睛高度约 64 单位
+            }
+            
+            # 获取当前视角角度
+            current_angles_vec = self.read_vec3(self.client_base + self.dwViewAngles)
+            
+            # 转换为 pitch/yaw 格式供 aimbot 使用
+            current_angles = {
+                "pitch": current_angles_vec["x"],
+                "yaw": current_angles_vec["y"]
+            }
+            
+            # 获取所有实体
+            entities = self.get_all_entities(64)
+            
+            # 过滤目标并计算角度
+            targets = []
+            for ent in entities:
+                # 跳过队友
+                if ent["team"] == player_team:
+                    continue
+                
+                # 根据瞄准位置选择骨骼索引
+                bone_index_map = {
+                    'head': 7,    # 头部
+                    'neck': 6,    # 脖子
+                    'chest': 5,   # 胸部
+                    'root': 0     # 根部
+                }
+                bone_index = bone_index_map.get(aim_position, 7)
+                
+                # 获取目标位置
+                if not ent["bone_array_ptr"]:
+                    # 如果没有骨骼数组，使用实体位置 + Z轴偏移作为近似
+                    target_pos = {
+                        "x": ent["position"]["x"],
+                        "y": ent["position"]["y"],
+                        "z": ent["position"]["z"] + (62.0 if aim_position == 'head' else 30.0)
+                    }
+                else:
+                    # CS2 更新后骨骼索引，每个骨骼占32字节
+                    bone_offset = bone_index * 32
+                    target_pos_addr = ent["bone_array_ptr"] + bone_offset
+                    
+                    target_pos = self.read_vec3(target_pos_addr)
+                    
+                    # 验证位置是否有效
+                    if not target_pos or abs(target_pos["x"]) > 100000 or abs(target_pos["y"]) > 100000:
+                        # 回退到实体位置
+                        target_pos = {
+                            "x": ent["position"]["x"],
+                            "y": ent["position"]["y"],
+                            "z": ent["position"]["z"] + (62.0 if aim_position == 'head' else 30.0)
+                        }
+                
+                # 计算从玩家眼睛到目标的角度
+                angle = self.calculate_angle(player_eye_pos, target_pos)
+                if not angle:
+                    continue
+                
+                targets.append({
+                    "entity": ent,
+                    "world_pos": target_pos,
+                    "angle": angle,
+                    "distance": self.calculate_distance(player_eye_pos, target_pos)
+                })
+            
+
             
             return {
                 "player_team": player_team,
+                "player_pos": player_eye_pos,  # 返回眼睛位置
+                "current_angles": current_angles,
                 "targets": targets,
-                "weapon_type": weapon_type,
-                "screen_width": screen_width,
-                "screen_height": screen_height
+                "weapon_type": "Rifles"
             }
-        except pymem.exception.MemoryReadError as e:
-            logger.error(f"自瞄逻辑中出现内存读取错误: 无法在地址 {e.address} 读取内存, 长度: {e.length} - GetLastError: {e.win32_error_code}")
-            return None
         except Exception as e:
-            if "Could not read memory at" in str(e):
-                logger.error("需要新的偏移量")
-            else:
-                logger.error(f"自瞄逻辑中出现错误: {e}")
+            logger.error(f"自瞄数据获取失败: {e}", exc_info=True)
             return None
 
     def world_to_screen(self, world_pos: dict, view_matrix: list, screen_width: int, screen_height: int) -> dict | None:
@@ -344,45 +515,6 @@ class MemoryManager:
                 logger.error(f"回退方法也失败了: {e2}")
                 return None
 
-    def get_weapon_type(self) -> str:
-        """获取当前装备武器的类型。"""
-        try:
-            player = self.read_longlong(self.client_base + self.dwLocalPlayerPawn)
-            if not player: return "AK47"
-
-            weapon_services_ptr = self.read_longlong(player + self.m_pWeaponServices)
-            if not weapon_services_ptr: return "AK47"
-
-            weapon_handle = self.read_longlong(weapon_services_ptr + self.m_hActiveWeapon)
-            if not weapon_handle: return "AK47"
-
-            weapon_id = weapon_handle & 0xFFFF
-            list_entry = self.read_longlong(self.ent_list + 8 * ((weapon_id & 0x7FFF) >> 9) + 16)
-            if not list_entry: return "AK47"
-
-            weapon_entity_ptr = self.read_longlong(list_entry + self.ENTITY_ENTRY_SIZE + 8 * (weapon_id & 0x1FF))
-            if not weapon_entity_ptr: return "AK47"
-
-            attribute_manager_ptr = self.read_longlong(weapon_entity_ptr + self.m_AttributeManager)
-            if not attribute_manager_ptr: return "AK47"
-
-            item_ptr = self.read_longlong(attribute_manager_ptr + self.m_Item)
-            if not item_ptr: return "AK47"
-
-            item_id = self.read_int(item_ptr + self.m_iItemDefinitionIndex)
-
-            weapon_map = {
-                1: "Pistols", 2: "Pistols", 3: "Pistols", 4: "Pistols", 30: "Pistols", 32: "Pistols", 36: "Pistols", 61: "Pistols", 63: "Pistols", 64: "Pistols",
-                7: "Rifles", 8: "Rifles", 10: "Rifles", 13: "Rifles", 16: "Rifles", 39: "Rifles", 60: "Rifles",
-                9: "Snipers", 11: "Snipers", 38: "Snipers", 40: "Snipers",
-                17: "SMGs", 19: "SMGs", 23: "SMGs", 24: "SMGs", 26: "SMGs", 33: "SMGs", 34: "SMGs",
-                14: "Heavy", 25: "Heavy", 27: "Heavy", 28: "Heavy", 35: "Heavy"
-            }
-            return weapon_map.get(item_id, "AK47")
-        except Exception as e:
-            logger.error(f"获取武器类型时出错: {e}")
-            return "AK47"
-        
     def write_float(self, address: int, value: float) -> None:
         """向内存写入一个浮点数。"""
         try:
@@ -497,3 +629,79 @@ class MemoryManager:
     def client_dll_base(self) -> int:
         """获取client.dll的基地址。"""
         return self.client_base
+    
+    def calculate_angle(self, src: dict, dst: dict) -> dict | None:
+        """
+        计算从源点到目标点的角度（Pitch/Yaw）
+        :param src: 源点坐标 {x, y, z}
+        :param dst: 目标点坐标 {x, y, z}
+        :return: {pitch, yaw} 或 None
+        """
+        try:
+            delta_x = dst['x'] - src['x']
+            delta_y = dst['y'] - src['y']
+            delta_z = dst['z'] - src['z']
+            
+            # 计算水平距离
+            distance_xy = math.sqrt(delta_x * delta_x + delta_y * delta_y)
+            
+            # 计算俯仰角（Pitch）- 垂直角度
+            pitch = math.degrees(math.atan2(-delta_z, distance_xy))
+            
+            # 计算偏航角（Yaw）- 水平角度
+            yaw = math.degrees(math.atan2(delta_y, delta_x))
+            
+            # 规范化角度到 -180 ~ 180 范围
+            if pitch > 89.0:
+                pitch = 89.0
+            elif pitch < -89.0:
+                pitch = -89.0
+            
+            if yaw > 180.0:
+                yaw -= 360.0
+            elif yaw < -180.0:
+                yaw += 360.0
+            
+            return {"pitch": pitch, "yaw": yaw}
+        except Exception as e:
+            logger.error(f"计算角度失败: {e}")
+            return None
+    
+    def calculate_distance(self, pos1: dict, pos2: dict) -> float:
+        """计算两点之间的3D距离"""
+        try:
+            dx = pos2['x'] - pos1['x']
+            dy = pos2['y'] - pos1['y']
+            dz = pos2['z'] - pos1['z']
+            return math.sqrt(dx * dx + dy * dy + dz * dz)
+        except Exception as e:
+            logger.error(f"计算距离失败: {e}")
+            return float('inf')
+    
+    def write_view_angles(self, angles: dict) -> bool:
+        """
+        直接写入视角角度到内存（平滑且难以检测）
+        :param angles: {pitch, yaw}
+        :return: 是否成功
+        """
+        try:
+            if not hasattr(self, 'dwViewAngles') or self.dwViewAngles is None:
+                logger.warning("dwViewAngles偏移量未找到")
+                return False
+            
+            view_angles_addr = self.client_base + self.dwViewAngles
+
+            
+            # 写入Pitch和Yaw
+            self.write_float(view_angles_addr, angles['pitch'])
+            self.write_float(view_angles_addr + 4, angles['yaw'])
+            
+            # 验证写入
+            verify_pitch = self.pm.read_float(view_angles_addr)
+            verify_yaw = self.pm.read_float(view_angles_addr + 4)
+
+            
+            return True
+        except Exception as e:
+            logger.error(f"写入视角角度失败: {e}")
+            return False

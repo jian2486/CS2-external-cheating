@@ -9,11 +9,13 @@ from classes.logger import Logger
 # 初始化日志记录器以确保一致的日志记录
 logger = Logger.get_logger()
 
+
 class ConfigFileChangeHandler(FileSystemEventHandler):
     """
     用于监控配置文件更改的文件系统事件处理器。
     当配置文件被修改时，自动更新所有功能的配置。
     """
+
     def __init__(self, main_window, debounce_interval=1.0):
         """
         使用对主窗口实例的引用初始化文件更改处理器。
@@ -30,24 +32,35 @@ class ConfigFileChangeHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         """当文件或目录被修改时调用。"""
-        if event.src_path and os.path.exists(self.config_path) and os.path.samefile(event.src_path, self.config_path):
-            if self.debounce_timer is not None:
-                self.debounce_timer.cancel()
-            self.debounce_timer = threading.Timer(self.debounce_interval, self.reload_config)
-            self.debounce_timer.start()
+        try:
+            # 只处理配置文件本身的修改事件，忽略其他文件和目录
+            if (event.src_path and
+                    os.path.exists(self.config_path) and
+                    os.path.exists(event.src_path) and
+                    os.path.samefile(event.src_path, self.config_path)):
+
+                if self.debounce_timer is not None:
+                    self.debounce_timer.cancel()
+                self.debounce_timer = threading.Timer(self.debounce_interval, self.reload_config)
+                self.debounce_timer.start()
+        except (FileNotFoundError, OSError) as e:
+            # 忽略文件不存在或路径错误的情况
+            logger.debug(f"文件监视器忽略事件 {event.src_path}: {e}")
+        except Exception as e:
+            logger.warning(f"文件监视器处理事件时出错 {event.src_path}: {e}")
 
     def reload_config(self):
         """重新加载配置文件并更新所有功能配置。"""
         try:
             # 重新加载更新后的配置文件
             new_config = ConfigManager.load_config()
-            
+
             # 更新所有功能的配置
             self.main_window.triggerbot.config = new_config
             self.main_window.overlay.config = new_config
             self.main_window.bunnyhop.config = new_config
             self.main_window.noflash.config = new_config
-            
+
             # 在主线程中更新UI以反映新配置
             self.main_window.root.after(0, self.main_window.update_ui_from_config)
         except Exception as e:
